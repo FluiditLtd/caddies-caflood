@@ -1,0 +1,78 @@
+// Update the water depth with the outflux v2
+// This version store the average amount of flux in m^3/s passed through the edge.
+// ATTENTION The Water depth of the boundary cells (bit 31
+// mask) is updated. The bounday cell should have only influx.
+
+CA_FUNCTION computeWDv2(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_REAL_I OUTF, 
+			CA_EDGEBUFF_REAL_IO AVGOUTF, CA_CELLBUFF_STATE_I MASK, 
+			CA_GLOB_REAL_I dt, CA_GLOB_REAL_I updatedt)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Retrive the index of the main cell.
+  CA_INDEX index = caIndex(grid, 0);
+
+  // Create the array which will contain the water fluxes on the
+  // edges.
+  CA_ARRAY_CREATE(grid, CA_REAL, FLUXES, caEdges+1);
+
+  // Create the array which will contain the average water fluxes on the
+  // edges.
+  CA_ARRAY_CREATE(grid, CA_REAL, AVGFLUXES, caEdges+1);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // Read bit 31 (true if the main cell is nodata in at least one
+  // neighbour has data)
+  CA_STATE bit31  = caReadBitsState(mask,31,32);
+
+  // If the main cell has no data and none of the neighbour has data,
+  // then do nothing.
+  if(bit0 == 0 && bit31 == 0)
+    return;
+
+  // Retrive the current value of the water depth.
+  CA_REAL  wd  = caReadCellBuffReal(grid,WD,index);
+
+  // Retrive the area of the main cell.
+  CA_REAL  area = caArea(grid,index);
+
+  // Read the fluxes of the main cell.
+  caReadEdgeBuffRealEdgeArray(grid, OUTF,index, FLUXES);
+
+  // Read the average fluxes of the main cell.
+  caReadEdgeBuffRealEdgeArray(grid, AVGOUTF, index, AVGFLUXES);
+
+  CA_REAL outflux = 0.0;
+
+  // Loop through the edges.
+  for(int e=1; e<=caEdges; e++)
+  {
+    // If the edge is one of the edges that can be updated without
+    // overwriting the buffer, the outflux is positive otherwise is
+    // negative.
+    if(e<=caUpdateEdges(grid))
+      outflux += FLUXES[e];
+    else
+      outflux -= FLUXES[e];    
+  }
+    
+  // Remove the outflux volume from the next step of the water depth
+  caWriteCellBuffReal(grid,WD,wd-(outflux/area));
+
+  // Loop through the edges that can be updated.
+  for(int e=1; e<=caUpdateEdges(grid); e++)
+  {    
+    // Find the  average/mean of an update step using the exponential smoothing
+    CA_REAL alpha   = dt/updatedt;
+    CA_REAL avgflux = (alpha * (FLUXES[e]/dt)) + ( (1-alpha) * AVGFLUXES[e] );
+
+    // Write the new value on the edge.
+    caWriteEdgeBuffReal(grid, AVGOUTF, e, avgflux);
+  }
+}

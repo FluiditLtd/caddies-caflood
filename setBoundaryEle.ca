@@ -1,0 +1,25 @@
+// Set the elevation value for the boundary cell inn order to simulate
+// OPEN or CLOSED boundary.
+CA_FUNCTION setBoundaryEle(CA_GRID grid, CA_CELLBUFF_REAL_IO ELV, CA_CELLBUFF_STATE_I MASK, 
+			   CA_GLOB_REAL_I elv)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Retrive the index of the main cell.
+  CA_INDEX index = caIndex(grid, 0);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+
+  // Read bit 31 (true if the main cell is nodata and at least one
+  // neighbour has data)
+  CA_STATE bit31  = caReadBitsState(mask,31,32);
+
+  // If bit 31 is false do nothing.
+  if(bit31 == 0)
+    return;
+
+  // Set the new elevation value for the boundary cell.
+  caWriteCellBuffReal(grid,ELV,elv);
+}

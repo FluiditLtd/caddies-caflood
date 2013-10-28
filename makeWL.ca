@@ -1,0 +1,31 @@
+// Change the given dst buffer  into  water level using the water depth and elevation.
+
+CA_FUNCTION makeWL(CA_GRID grid, CA_CELLBUFF_REAL_IO DST,
+		   CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_STATE_I MASK)
+{
+  // Initialise the grid	
+  CA_GRID_INIT(grid);		
+
+  // Retrive the index of the main cell.
+  CA_INDEX index = caIndex(grid, 0);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // If the main cell has no data 
+  // then do nothing.
+  if(bit0 == 0)
+    return;
+
+  // Retrive the value of the elevation
+  CA_REAL  elv  = caReadCellBuffReal(grid,ELV,index);
+
+  // Retrive the value of the water depth.
+  CA_REAL  wd  = caReadCellBuffReal(grid,WD,index);
+
+  // Add the sum of elv+wd into destination.
+  caWriteCellBuffReal(grid,DST,elv+wd);
+}

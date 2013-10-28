@@ -1,0 +1,15 @@
+// Copy the source buffer to the destination buffer.
+CA_FUNCTION copy(CA_GRID grid, CA_CELLBUFF_REAL_IO DST, CA_CELLBUFF_REAL_I SRC)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Retrive the index of the main cell.
+  CA_INDEX index = caIndex(grid, 0);
+
+  // Retrive the value of the source
+  CA_REAL  src  = caReadCellBuffReal(grid,SRC,index);
+
+  // Write to destination.
+  caWriteCellBuffReal(grid,DST,src);
+}

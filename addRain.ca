@@ -1,0 +1,29 @@
+// Add the rain into a buffer.  ATTENTION The rain is not
+// added into the the boundary cell (bit 31 mask).
+
+
+CA_FUNCTION addRain(CA_GRID grid, CA_CELLBUFF_REAL_IO BUFF, CA_CELLBUFF_STATE_I MASK, CA_GLOB_REAL_I rain)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Retrive the index of the main cell.
+  CA_INDEX index = caIndex(grid, 0);
+
+  // Retrive the value of the buffer
+  CA_REAL  value = caReadCellBuffReal(grid,BUFF,index);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+
+  // Read bit 0  (false the main cell is nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // If the main cell has no data. Do
+  // nothing.
+  if(bit0 == 0)
+    return;
+
+  // Add the rain value+rain*dt/3600
+  caWriteCellBuffReal(grid,BUFF,value+rain);
+}

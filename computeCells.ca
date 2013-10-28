@@ -1,0 +1,24 @@
+// Used to count the number of cells.
+
+CA_FUNCTION computeCells(CA_GRID grid, CA_CELLBUFF_REAL_IO TMP,CA_CELLBUFF_STATE_I MASK)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Retrive the index of the main cell.
+  CA_INDEX index = caIndex(grid, 0);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // If the main cell has no data,
+  // then do nothing.
+  if(bit0 == 0)
+    return;
+
+  // Write 1 in the buffer
+  caWriteCellBuffReal(grid,TMP,1.0);
+}
