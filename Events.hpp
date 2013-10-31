@@ -16,57 +16,6 @@
 #include<vector>
 
 
-//! Structure with the configuration value that define a rain event in
-//! the CA2D model. A rain event is the amount of rain intensity
-//! falling over time. The time is represented the end onf the
-//! intensity from t=0 of the rain in second while the rain intensity
-//! value is represented in mm/hr.
-struct RainEvent
-{
-  std::string    name;		//!< Name of the event. 
-
-  std::vector<CA::Real> rains;	//!< The list of rain intensities in mm/hr 
-  std::vector<CA::Real> times;	//!< The times when the rain intensities stop in seconds.
-  std::vector<CA::Real> area;	//!< The area where the rain will fall (if empty all domain).  
-  std::vector<CA::Real> zone;	//!< The zone (x,y,w,h) where the rain will heppen (if empty all domain).
-};
-
-
-//! The structure used during the model computation to store the rain
-//! event data.
-struct REData
-{
-  size_t   index;	        //!< The index of the rain data (rains/times).
-  CA::Box  box_area;	 	//!< The box of the area where the rain fall.
-  CA::Real grid_area;		//!< Compute the exact grid area, it used for volume checking. 
-  CA::Real volume;		//!< Compute the total volume of water added by rain. 
-
-  REData():
-    index(0), box_area(CA::Box::Empty())
-  {}
-
-  ~REData()
-  {}
-};
-
-
-//! Initialise the rain event structure usign a CSV file. 
-//! Each row represents a new "variable" where the 
-//! first column is the name of the element 
-//! and the following columns have the multiple/single values.
-//! \attention The order of elements is not important.
-//! \param[in]  filename This is the file where the data is read.
-//! \param[out] setup    The structure containing the read data.
-//! \return A non zero value if there was an error.
-int initRainEventFromCSV(const std::string& filename, RainEvent& re);
-
-
-//! Initialise the rain event data that is used during the
-//! computation from the rain event configuration.
-//! \return A non zero value if there was an error.
-int initREData(const CA::Grid&  GRID, const RainEvent& re, REData& redata);
-
-
 //! Structure with the configuration value that define a water level
 //! event in the CA2D model. A water level event is the level of water
 //! in a specific area at specific time. The time is in seconds and

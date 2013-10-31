@@ -8,6 +8,7 @@
 #include"Masks.hpp"
 #include"ArgsData.hpp"
 #include"Setup.hpp"
+#include"Rain.hpp"
 #include"Events.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"
@@ -69,11 +70,54 @@ void outputConsole(CA::Unsigned iter, CA::Unsigned oiter, CA::Real t, CA::Real d
 }
 
 
+//! Compute the next time step as a fraction of the period time step.
+//! Check that dt is between  min max.
+void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& setup)
+{
+  CA::Unsigned dtfracmax = static_cast<CA::Unsigned>(setup.time_maxdt / setup.time_mindt);
+  
+  // Find the fraction of time_maxdt second that is just less than dtn1.
+  // If dt is smaller than dtn1 we need to decrease the
+  // fraction and stop as soon as the result is higher than dtn1.
+  // If dt is bigger than dtn1 we need to increase the
+  // fraction and stop as soon as the restuts is lower tha dtn1.
+  if(dt<=dtn1)
+  {
+    for(dtfrac; dtfrac>=1;dtfrac--)
+    {
+      CA::Real tmpdt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
+      if(tmpdt>=dtn1)
+	break;
+    }
+    if(dtfrac==1)
+      dt = setup.time_maxdt;
+    else
+    {
+      dtfrac+=1;
+      dt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
+    }
+  }
+  else
+  {
+    for(dtfrac; dtfrac<=dtfracmax;dtfrac++)
+    {
+      CA::Real tmpdt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
+      if(tmpdt<=dtn1)
+	break;
+    }
+    dt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
+  }
+
+  // Check that dt is between  min max.
+  dt = std::min(std::max(dt,setup.time_mindt), setup.time_maxdt);  
+}
+
+
 // -------------------------//
 // Include the CA 2D functions //
 // -------------------------//
-#include CA_2D_INCLUDE(computeCells)
 #include CA_2D_INCLUDE(computeArea)
+#include CA_2D_INCLUDE(computeCells)
 #include CA_2D_INCLUDE(setBoundaryEle)
 #include CA_2D_INCLUDE(addRain)
 #include CA_2D_INCLUDE(addRaise)
@@ -222,8 +266,6 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   CA::Real     dt     = setup.time_maxdt;  // Starting delta time.
   CA::Real     dtn1   = 0.0;
   CA::Real     nodata = eg.nodata;
-  CA::Unsigned dtfrac    = 1;		   // The fraction of time_maxdt second used to compute the next the dt
-  CA::Unsigned dtfracmax = static_cast<CA::Unsigned>(setup.time_maxdt / setup.time_mindt);
 
   // The level of water that can be ignored.
   CA::Real     ignore_wd  = setup.ignore_wd;
@@ -238,6 +280,9 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // This is the period of when the velocity is computed.
   CA::Real     period_time_dt = setup.time_updatedt;
   CA::Real     time_dt        = t + period_time_dt;          // The next simulation time when to update dt.
+
+ // The fraction of time_maxdt second used to compute the next the dt
+  CA::Unsigned dtfrac    = 1;		  
   
   // The parameter of the time step.
   CA::Real     alpha  = setup.time_alpha;
@@ -346,25 +391,16 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
   // ----  INIT RAIN EVENT  ----
 
-  // List of rain venet data.
-  std::vector<REData> redatas(res.size());
+  // Initialise the object that manage the rain.
+  RainManager rain_manager(GRID,res);
 
-  for(size_t i = 0; i<res.size(); ++i)
-  {
-    initREData(GRID, res[i], redatas[i]);
+  // Add the area with rain in the computational domain.
+  rain_manager.addDomain(compdomain);
 
-    // Compute area to use for volume cheking.
-    if(setup.check_vols)
-    {
-      // WD is used as temporary buffer here.
-      WD.fill(fulldomain, 0.0);
-      CA::Execute::function(redatas[i].box_area, computeArea, GRID, WD, MASK);    
-      WD.sequentialOp(redatas[i].box_area, redatas[i].grid_area, CA::Seq::Add);	
-    }
-
-    // Add the area with rain in the computational domain.
-    compdomain.add(redatas[i].box_area);
-  }
+  // Analyse the area where it will rain to use for volume cheking. WD
+  // is used as temporary buffer.
+  if(setup.check_vols)
+    rain_manager.analyseArea(WD,MASK,fulldomain);
 
   // ----  INIT INFLOW EVENT  ----
 
@@ -428,6 +464,26 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     compdomain.clear();
     compdomain.add(fullbox);
   }
+
+  // -- CALCULATE POSSIBLE INITIAL DT ---
+
+  // Find the possible velocity caused by the events.
+  potential_va = 0.0;
+  potential_va = std::max( potential_va, rain_manager.potentialVA(t,period_time_dt) );
+
+  // Compute the possible next time step using the critical velocity equations.
+  dtn1 = std::min(setup.time_maxdt,alpha*GRID.length()/potential_va);
+  
+  // Compute the next time step as a fraction fo the period time step.
+  // Check that dt is between  min max.
+  computeDT(dt,dtfrac,dtn1,setup);
+
+  // -- PREPARE THE EVENTS MANAGERS WITH THE NEW DT ---
+
+  // Get the amount of rain tahts houdl fall in each area for each dt
+  // for the next period.
+  rain_manager.prepare(t,period_time_dt,dt);
+  
 
   // ------------------------- MAIN LOOP -------------------------------
   while(iter<setup.time_maxiters && t<setup.time_end)
@@ -501,45 +557,6 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // FLUX calculation. ATTENTION, at the moment is used only to
     // compute potential_dt.
     potential_va = 0;
-
-    // --- RAIN EVENT(s) ---
-
-    // Loop through the rain event(s).
-    for(size_t i = 0; i<res.size(); ++i)
-    {
-      size_t index = redatas[i].index;
-
-      // If the index is larger than the available rain/time, do
-      // nothing.
-      if(index >= res[i].rains.size() )
-	continue;
-
-      // Add the rain (transformed in metres from mm) into the water depth on
-      // the specific area.
-      CA::Real rain = (res[i].rains[index] * 0.001) * (dt/3600.0);
-      CA::Execute::function(redatas[i].box_area, addRain, GRID, WD, MASK, rain);
-
-      // Compute the potential velocity using the amount of extra
-      // water level added.
-      potential_va = std::max(potential_va, std::sqrt( static_cast<CA::Real>(9.81)*(rain) ) );
-
-      // If it is requested to check the volumes, compute the total
-      // volume of water that rained.
-      if(setup.check_vols == true)
-      {
-	redatas[i].volume += rain * redatas[i].grid_area;
-	rain_volume       += rain * redatas[i].grid_area;
-      }
-
-      // Check if the simulation time now is equal or higher than the
-      // time when this rain intensity ends. If it is the case,
-      // increase the index to the next rain intensity.
-      if(t >= res[i].times[index])
-	index++;
-
-      // Update index.
-      redatas[i].index = index;
-    }
 
     // --- INFLOW EVENT(s) ---
 
@@ -683,12 +700,18 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // amount of outflux. 
     CA::Execute::function(compdomain, computeWDv2, GRID, WD, OUTF, AVGOUTF, MASK, dt, period_time_dt);
 
-        // --- COMPUTE NEXT DT ---
+    // --- EXTRA LATERAL EVENT(s) ---
+
+    // Add the eventual rain events.
+    rain_manager.add(WD,MASK);
+
+
+    // --- COMPUTE NEXT DT, I.E. PERIOD STEP ---
     
     // Check if the dt need to be re-computed.
     if(t>=time_dt)
     {   
-      // Lets make sure there are not anu rounding errors.
+      // Lets make sure there are not any rounding errors.
       t = time_dt;
 
       // The peak value need to be updated
@@ -711,50 +734,26 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       // Find the maximum velocity
       CA::Real grid_max_va = vamax;
 
+      // Find the possible velocity caused by the events.
+      potential_va = 0.0;
+      potential_va = std::max(potential_va, rain_manager.potentialVA(t,period_time_dt) );
+
       // Compute the possible next dt from the grid velocity and from
       // the potential velocity fron an event.
       dtn1 = setup.time_maxdt;
       dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
       dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
             	     
-      // Find the fraction of time_maxdt second that is just less than dtn1.
-      // If dt is smaller than dtn1 we need to decrease the
-      // fraction and stop as soon as the result is higher than dtn1.
-      // If dt is bigger than dtn1 we need to increase the
-      // fraction and stop as soon as the restuts is lower tha dtn1.
-      if(dt<=dtn1)
-      {
-	for(dtfrac; dtfrac>=1;dtfrac--)
-	{
-	  CA::Real tmpdt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
-	  if(tmpdt>=dtn1)
-	    break;
-	}
-	if(dtfrac==1)
-	  dt = setup.time_maxdt;
-	else
-	{
-	  dtfrac+=1;
-	  dt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
-	}
-      }
-      else
-      {
-	for(dtfrac; dtfrac<=dtfracmax;dtfrac++)
-	{
-	  CA::Real tmpdt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
-	  if(tmpdt<=dtn1)
-	    break;
-	}
-	dt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
-      }
-
+      // Compute the next time step as a fraction fo the period time step.
       // Check that dt is between  min max.
-      dt = std::min(std::max(dt,setup.time_mindt), setup.time_maxdt);
+      computeDT(dt,dtfrac,dtn1,setup);
       
       // When the dt need to be recomputed.
       time_dt += period_time_dt;
     
+      // Prepare the Events manager for the next update .
+      rain_manager.prepare(t,period_time_dt,dt);
+
     } // COMPUTE NEXT DT.
 
     // -------  OUTPUTS --------

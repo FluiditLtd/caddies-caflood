@@ -10,6 +10,7 @@
 #include"Options.hpp"
 #include"ArgsData.hpp"
 #include"Setup.hpp"
+#include"Rain.hpp"
 #include"Events.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"
