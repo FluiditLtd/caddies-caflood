@@ -56,12 +56,12 @@ private:
     size_t   index;	        //!< The index of the rain data (rains/times).
     CA::Box  box_area;	 	//!< The box of the area where the rain fall.
     CA::Real grid_area;		//!< Compute the exact grid area, it used for volume checking. 
-    CA::Real volume;		//!< Compute the total volume of water added by rain. 
 
+    CA::Real volume;	        //!< Compute the total volume of rain of the last period.
     CA::Real rain;		//!< The amount of rain for each dt of the next period. 
     
     Data():
-      index(0), box_area(CA::Box::Empty())
+      index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0), rain(0.0)
     {}
     
     ~Data()
@@ -87,6 +87,10 @@ public:
   //! step.
   void prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_dt);
 
+  //! Return the volume of rain of the last period_time_dt. 
+  //! \attention This is the PERIOD volume.
+  CA::Real volume();
+
   //! Add the amount of rain that was previously prepared into the
   //! water depth
   void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK);
@@ -96,6 +100,7 @@ public:
   //! This is used to limit the time step.
   CA::Real potentialVA(CA::Real t, CA::Real period_time_dt); 
 
+  
 protected:
 
   //! Initialise a single rain event data that is used during the

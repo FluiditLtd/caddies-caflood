@@ -140,8 +140,9 @@ void RainManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_dt)
   // Loop through the rain event(s).
   for(size_t i = 0; i<_res.size(); ++i)
   {
-    // Set the rain to zero.
-    _datas[i].rain = 0.0;
+    // Set the rain and volume to zero.
+    _datas[i].rain   = 0.0;
+    _datas[i].volume = 0.0;
 
     // Get the index.
     size_t index = _datas[i].index;
@@ -159,10 +160,28 @@ void RainManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_dt)
 
     // Get the rain (transformed in metres from mm) for each dt of the next period.
     _datas[i].rain = (_res[i].rains[index] * 0.001) * (next_dt/3600.0);
+
+    // Get the rain (transformed in metres from mm) for the next period.
+    CA::Real period_rain = (_res[i].rains[index] * 0.001) * (period_time_dt/3600.0);
+
+    // Add the volume.
+    _datas[i].volume = period_rain * _datas[i].grid_area;
     
     // Update index.
     _datas[i].index = index;
   }
+}
+
+
+CA::Real RainManager::volume()
+{
+  CA::Real rain_volume = 0.0;
+  
+  // Loop through the rain event(s).
+  for(size_t i = 0; i<_res.size(); ++i)
+    rain_volume  += _datas[i].volume;
+
+  return rain_volume;
 }
 
 

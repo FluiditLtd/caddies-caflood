@@ -717,6 +717,9 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       // The peak value need to be updated
       UpdatePEAK = true;
 
+      // Update the total volume from the events for the last period.
+      rain_volume += rain_manager.volume();
+
       // --- UPDATE VA  ---
       
       // Compute the velocity using the total outflux.
