@@ -9,6 +9,7 @@
 #include"ArgsData.hpp"
 #include"Setup.hpp"
 #include"Rain.hpp"
+#include"Inflow.hpp"
 #include"Events.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"
@@ -119,7 +120,6 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 #include CA_2D_INCLUDE(computeArea)
 #include CA_2D_INCLUDE(computeCells)
 #include CA_2D_INCLUDE(setBoundaryEle)
-#include CA_2D_INCLUDE(addRain)
 #include CA_2D_INCLUDE(addRaise)
 #include CA_2D_INCLUDE(addInflow)
 #include CA_2D_INCLUDE(outflowWeightedWDv2)
@@ -375,7 +375,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
   // ----  INIT WATER LEVEL EVENT  ----
 
-  // List of rain event data.
+  // List of water level event data.
   std::vector<WLEData> wledatas(wles.size());
 
   for(size_t i = 0; i<wles.size(); ++i)
@@ -403,6 +403,17 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     rain_manager.analyseArea(WD,MASK,fulldomain);
 
   // ----  INIT INFLOW EVENT  ----
+
+  // Initialise the object that manage the inflow.
+  InflowManager inflow_manager(GRID,ies);
+
+  // Add the area with the inflow in the computational domain.
+  inflow_manager.addDomain(compdomain);
+
+  // Analyse the area where it will inflow to use for volume
+  // cheking. WD is used as temporary buffer.
+  if(setup.check_vols)
+    inflow_manager.analyseArea(WD,MASK,fulldomain);
 
   // List of inflow event data.
   std::vector<IEData> iedatas(ies.size());
@@ -469,7 +480,8 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
   // Find the possible velocity caused by the events.
   potential_va = 0.0;
-  potential_va = std::max( potential_va, rain_manager.potentialVA(t,period_time_dt) );
+  potential_va = std::max( potential_va, rain_manager  .potentialVA(t,period_time_dt) );
+  potential_va = std::max( potential_va, inflow_manager.potentialVA(t,period_time_dt) );
 
   // Compute the possible next time step using the critical velocity equations.
   dtn1 = std::min(setup.time_maxdt,alpha*GRID.length()/potential_va);
@@ -480,11 +492,11 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
   // -- PREPARE THE EVENTS MANAGERS WITH THE NEW DT ---
 
-  // Get the amount of rain tahts houdl fall in each area for each dt
+  // Get the amount of events that would happen in each area for each dt
   // for the next period.
-  rain_manager.prepare(t,period_time_dt,dt);
+  rain_manager  .prepare(t,period_time_dt,dt);
+  inflow_manager.prepare(t,period_time_dt,dt);
   
-
   // ------------------------- MAIN LOOP -------------------------------
   while(iter<setup.time_maxiters && t<setup.time_end)
   {
@@ -705,6 +717,8 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // Add the eventual rain events.
     rain_manager.add(WD,MASK);
 
+    // Add the eventual inflow events.
+    inflow_manager.add(WD,MASK);
 
     // --- COMPUTE NEXT DT, I.E. PERIOD STEP ---
     
@@ -718,7 +732,8 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       UpdatePEAK = true;
 
       // Update the total volume from the events for the last period.
-      rain_volume += rain_manager.volume();
+      rain_volume   += rain_manager.volume();
+      inflow_volume += inflow_manager.volume();
 
       // --- UPDATE VA  ---
       
@@ -739,7 +754,8 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
       // Find the possible velocity caused by the events.
       potential_va = 0.0;
-      potential_va = std::max(potential_va, rain_manager.potentialVA(t,period_time_dt) );
+      potential_va = std::max(potential_va, rain_manager  .potentialVA(t,period_time_dt) );
+      potential_va = std::max(potential_va, inflow_manager.potentialVA(t,period_time_dt) );
 
       // Compute the possible next dt from the grid velocity and from
       // the potential velocity fron an event.
@@ -755,7 +771,8 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       time_dt += period_time_dt;
     
       // Prepare the Events manager for the next update .
-      rain_manager.prepare(t,period_time_dt,dt);
+      rain_manager  .prepare(t,period_time_dt,dt);
+      inflow_manager.prepare(t,period_time_dt,dt);
 
     } // COMPUTE NEXT DT.
 

@@ -11,6 +11,7 @@
 #include"ArgsData.hpp"
 #include"Setup.hpp"
 #include"Rain.hpp"
+#include"Inflow.hpp"
 #include"Events.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"

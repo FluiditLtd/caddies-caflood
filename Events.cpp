@@ -9,7 +9,6 @@
 #include<iostream>
 #include<fstream>
 
-
 int initWLEventFromCSV(const std::string& filename, WLEvent& wle)
 {
   std::ifstream ifile(filename.c_str());
@@ -87,6 +86,7 @@ int initWLEventFromCSV(const std::string& filename, WLEvent& wle)
   return 0;
 }
 
+
 int initWLEData(const CA::Grid&  GRID, const WLEvent& wle, WLEData& wledata)
 {
   wledata.index = 0;
@@ -112,83 +112,6 @@ int initWLEData(const CA::Grid&  GRID, const WLEvent& wle, WLEData& wledata)
   return 0;
 }
 
-
-int initIEventFromCSV(const std::string& filename, IEvent& ie)
-{
-  std::ifstream ifile(filename.c_str());
-  
-  if(!ifile)
-  {
-    std::cerr<<"Error opening CSV file: "<<filename<<std::endl;
-    return 1;
-  }
-  
-  // Parse the file line by line until the end of file 
-  // and retrieve the tokens of each line.
-  while(!ifile.eof())
-  {
-    std::vector<std::string> tokens( CA::getLineTokens(ifile, ',') );
-    
-    // If the tokens vector is empty we reached the eof or an
-    // empty line... continue.
-    if(tokens.empty())
-      continue;       
-
-    if(CA::compareCaseInsensitive("Event Name",tokens[0],true))
-    {
-      std::string str;
-      READ_TOKEN(str,tokens[1],tokens[0]);
-      
-      ie.name = CA::trimToken(str," \t\r");
-    }
-
-    if(CA::compareCaseInsensitive("Inflow",tokens[0],true))
-    {
-      for (size_t i=1; i<tokens.size(); ++i)
-      {
-	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
-
-	ie.ins.push_back(value);
-      }
-    }
-
-    if(CA::compareCaseInsensitive("Time",tokens[0],true))
-    {
-      for (size_t i=1; i<tokens.size(); ++i)
-      {
-	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
-
-	ie.times.push_back(value);
-      }
-    }
-
-    if(CA::compareCaseInsensitive("Area",tokens[0],true))
-    {
-      for (size_t i=1; i<tokens.size(); ++i)
-      {
-	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
-
-	ie.area.push_back(value);
-      }
-    }
-
-    if(CA::compareCaseInsensitive("Zone",tokens[0],true))
-    {
-      for (size_t i=1; i<tokens.size(); ++i)
-      {
-	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
-
-	ie.zone.push_back(value);
-      }
-    }
-  }
-  
-  return 0;
-}
 
 int initIEData(const CA::Grid&  GRID, const IEvent& ie, IEData& iedata)
 {
