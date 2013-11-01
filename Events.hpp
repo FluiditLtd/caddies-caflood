@@ -66,32 +66,4 @@ int initWLEventFromCSV(const std::string& filename, WLEvent& wle);
 //! \return A non zero value if there was an error.
 int initWLEData(const CA::Grid&  GRID, const WLEvent& wle, WLEData& wledata);
 
-
-
-//! The structure used during the model computation to store the inflow
-//! event data.
-struct IEData
-{
-  size_t   index;	        //!< The index of the inflow data (ins/times).
-  CA::Box  box_area;	 	//!< The box of the area where the inflow is set.
-  CA::Real grid_area;		//!< Compute the exact grid area, it used for volume checking. 
-  CA::Real volume;		//!< Compute the total volume of water added by rain. 
-
-
-  IEData():
-    index(0), box_area(CA::Box::Empty())
-  {}
-
-  ~IEData()
-  {}
-};
-
-
-//! Initialise the inflow  event data that is used during the
-//! computation from the rain event configuration.
-//! \return A non zero value if there was an error.
-int initIEData(const CA::Grid&  GRID, const IEvent& ie, IEData& iedata);
-
-
-
 #endif

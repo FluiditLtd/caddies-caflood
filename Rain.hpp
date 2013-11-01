@@ -91,9 +91,8 @@ public:
   //! \attention This is the PERIOD volume.
   CA::Real volume();
 
-  //! Add the amount of rain that was previously prepared into the
-  //! water depth
-  void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK);
+  //! Add the amount of rain 
+  void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real next_dt);
 
   //! Compute the potential velocity that could happen in the next
   //! update/period step.

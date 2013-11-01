@@ -14,6 +14,7 @@
 // Include the CA 2D functions //
 // -------------------------//
 #include CA_2D_INCLUDE(computeArea)
+#include CA_2D_INCLUDE(addInflow)
 
 
 int initIEventFromCSV(const std::string& filename, IEvent& ie)
@@ -135,7 +136,36 @@ void InflowManager::analyseArea(CA::CellBuffReal& TMP, CA::CellBuffState& MASK, 
 
 void InflowManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_dt)
 {
+  // Loop through the inflow event(s).
+  for(size_t i = 0; i<_ies.size(); ++i)
+  {
+    // Set the volume to zero.
+    _datas[i].volume = 0.0;
+    
+    size_t index = _datas[i].index;
 
+    // If the index is larger than the available ins/time, do
+    // nothing.
+    if(index >= _ies[i].ins.size() )
+      continue;
+      
+    // Compute the total volume for the period time.
+    CA::Real volume = 0;
+    if(index != _ies[i].ins.size() -1)
+    {
+      CA::Real y0 = _ies[i].ins[index];
+      CA::Real y1 = _ies[i].ins[index+1];
+      CA::Real x0 = _ies[i].times[index];
+      CA::Real x1 = _ies[i].times[index+1];
+      CA::Real t0 = t;
+      CA::Real t1 = t + period_time_dt;
+      CA::Real yt0= y0 + (y1-y0) * ( (t0 - x0)/(x1 - x0) );
+      CA::Real yt1= y0 + (y1-y0) * ( (t1 - x0)/(x1 - x0) );
+      volume = 0.5*(t1-t0)*(yt1-yt0)+(t1-t0)*(yt0);
+    }
+
+    _datas[i].volume = volume;      
+  }
 }
 
 
@@ -151,16 +181,98 @@ CA::Real InflowManager::volume()
 }
 
 
-void InflowManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK)
+void InflowManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt)
 {
+  // Loop through the inflow event(s).
+  for(size_t i = 0; i<_ies.size(); ++i)
+  {
+    size_t index = _datas[i].index;
 
+    // If the index is larger than the available ins/time, do
+    // nothing.
+    if(index >= _ies[i].ins.size() )
+      continue;
+      
+    // Compute the inflow volume at specific time using
+    // interpolation. Check if the index is the last available
+    // one, then there is no inflow.
+    CA::Real volume = 0;
+    if(index != _ies[i].ins.size() -1)
+    {
+      CA::Real y0 = _ies[i].ins[index];
+      CA::Real y1 = _ies[i].ins[index+1];
+      CA::Real x0 = _ies[i].times[index];
+      CA::Real x1 = _ies[i].times[index+1];
+      CA::Real t0 = t - dt;
+      CA::Real t1 = t;
+      CA::Real yt0= y0 + (y1-y0) * ( (t0 - x0)/(x1 - x0) );
+      CA::Real yt1= y0 + (y1-y0) * ( (t1 - x0)/(x1 - x0) );
+      volume = 0.5*(t1-t0)*(yt1-yt0)+(t1-t0)*(yt0);
+    }
+
+    // ATTENTION The volume is the total volume, it need to be
+    // divided by the number of cells that are going to receive the
+    // inflow. 
+    volume = volume/(_datas[i].grid_area/(_grid.length()*_grid.length()));
+
+    // Add (or subtract) the given volume into the water detph of the
+    // given area.
+    CA::Execute::function(_datas[i].box_area, addInflow, _grid, WD, MASK, volume);           
+      
+    // Check if the simulation time now is equal or higher than the
+    // time of the NEXT index.
+    if(t >= _ies[i].times[index+1])
+      index++;
+      
+    // Update index.
+    _datas[i].index = index;
+  }
 }
 
 
 CA::Real InflowManager::potentialVA(CA::Real t, CA::Real period_time_dt)
 {
   CA::Real potential_va = 0.0;
-  
+
+  // Compute the total amount of volume that is going to be added into
+  // each cell for the time period. Calculate the extra amout of
+  // water depth taht would be added in a second. Compute the possible velocity
+  // using the critical velocity.
+  for(size_t i = 0; i<_ies.size(); ++i)
+  {
+    size_t index = _datas[i].index;
+
+    // If the index is larger than the available ins/time, do
+    // nothing.
+    if(index >= _ies[i].ins.size() )
+      continue;
+      
+    // Compute the total volume for the period time.
+    CA::Real volume = 0;
+    if(index != _ies[i].ins.size() -1)
+    {
+      CA::Real y0 = _ies[i].ins[index];
+      CA::Real y1 = _ies[i].ins[index+1];
+      CA::Real x0 = _ies[i].times[index];
+      CA::Real x1 = _ies[i].times[index+1];
+      CA::Real t0 = t;
+      CA::Real t1 = t + period_time_dt;
+      CA::Real yt0= y0 + (y1-y0) * ( (t0 - x0)/(x1 - x0) );
+      CA::Real yt1= y0 + (y1-y0) * ( (t1 - x0)/(x1 - x0) );
+      volume = 0.5*(t1-t0)*(yt1-yt0)+(t1-t0)*(yt0);
+    }
+
+    // ATTENTION The volume is the total volume, to get the volume per
+    // cell it need to be divided by the number of cells that are
+    // going to receive the inflow. Then it need to be divided by the
+    // cell area.
+    CA::Real wd = volume/(_datas[i].grid_area*period_time_dt);
+
+    // Compute the potential velocity.
+    potential_va = std::max(potential_va, std::sqrt(wd*static_cast<CA::Real>(9.81)));
+  }  
+
+  // ATTENTION! This does not need to be precise but just give a rough estimation
 
   return potential_va;
 }

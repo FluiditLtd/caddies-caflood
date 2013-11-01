@@ -303,9 +303,6 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // Maximum velocity.
   CA::Real     vamax=0.0;
 
-  // The area of the base queare grid cell.
-  CA::Real     cell_area  = GRID.length()*GRID.length();
-
   // The total number of cells.
   CA::Real    total_cells = 0.0;
 
@@ -414,26 +411,6 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // cheking. WD is used as temporary buffer.
   if(setup.check_vols)
     inflow_manager.analyseArea(WD,MASK,fulldomain);
-
-  // List of inflow event data.
-  std::vector<IEData> iedatas(ies.size());
-
-  for(size_t i = 0; i<ies.size(); ++i)
-  {
-    initIEData(GRID, ies[i], iedatas[i]);
-
-    // Compute area to use for volume cheking.
-    if(setup.check_vols)
-    {
-      // WD is used as temporary buffer here.
-      WD.fill(fulldomain, 0.0);
-      CA::Execute::function(iedatas[i].box_area, computeArea, GRID, WD, MASK);    
-      WD.sequentialOp(iedatas[i].box_area, iedatas[i].grid_area, CA::Seq::Add);	
-    }
-
-    // Add the area with inflow in the computational domain.
-    compdomain.add(iedatas[i].box_area);
-  }
   
   // ----  INIT TIME PLOTS ----
 
@@ -528,7 +505,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 	// Compute the total volume of water that is in the water
 	// depth (included the boundary cell).
 	WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
-	wd_volume *= cell_area;
+	wd_volume *= GRID.length()*GRID.length();
 
 	std::cout<<"Volume RAIN = "<<rain_volume<<" Volume INFLOW = "<<inflow_volume
 		 <<" Volume WD = "<<wd_volume<<std::endl;	
@@ -569,65 +546,6 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // FLUX calculation. ATTENTION, at the moment is used only to
     // compute potential_dt.
     potential_va = 0;
-
-    // --- INFLOW EVENT(s) ---
-
-    // Loop through the inflow event(s).
-    for(size_t i = 0; i<ies.size(); ++i)
-    {
-      size_t index = iedatas[i].index;
-
-      // If the index is larger than the available ins/time, do
-      // nothing.
-      if(index >= ies[i].ins.size() )
-	continue;
-      
-      // Compute the inflow volume at specific time using
-      // interpolation. Check if the index is the last available
-      // one, then there is no inflow.
-      CA::Real volume = 0;
-      if(index != ies[i].ins.size() -1)
-      {
-	CA::Real y0 = ies[i].ins[index];
-	CA::Real y1 = ies[i].ins[index+1];
-	CA::Real x0 = ies[i].times[index];
-	CA::Real x1 = ies[i].times[index+1];
-	CA::Real t0 = t - dt;
-	CA::Real t1 = t;
-	CA::Real yt0= y0 + (y1-y0) * ( (t0 - x0)/(x1 - x0) );
-	CA::Real yt1= y0 + (y1-y0) * ( (t1 - x0)/(x1 - x0) );
-	volume = 0.5*(t1-t0)*(yt1-yt0)+(t1-t0)*(yt0);
-      }
-
-      // If it is requested to check the volumes, compute the total
-      // volume of inflow 
-      if(setup.check_vols == true)
-      {
-	iedatas[i].volume += volume;
-	inflow_volume     += volume;	
-      }
-
-      // ATTENTION The volume is the total volume, it need to be
-      // divided by the number of cells that are going to receive the
-      // inflow. 
-      volume = volume/(iedatas[i].grid_area/cell_area);
-
-      // Compute the potential velocity using the amount of extra
-      // water level added.
-      potential_va = std::max(potential_va, std::sqrt(static_cast<CA::Real>(9.81)*(volume/cell_area) ) );
-      
-      // Add (or subtract) the given volume into the water detph of the
-      // given area.
-      CA::Execute::function(iedatas[i].box_area, addInflow, GRID, WD, MASK, volume);           
-      
-      // Check if the simulation time now is equal or higher than the
-      // time of the NEXT index.
-      if(t >= ies[i].times[index+1])
-	index++;
-      
-      // Update index.
-      iedatas[i].index = index;
-    }
 
     // --- WATER LEVEL EVENT(s) ---
 
@@ -715,10 +633,10 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // --- EXTRA LATERAL EVENT(s) ---
 
     // Add the eventual rain events.
-    rain_manager.add(WD,MASK);
+    rain_manager.add(WD,MASK,t,dt);
 
     // Add the eventual inflow events.
-    inflow_manager.add(WD,MASK);
+    inflow_manager.add(WD,MASK,t,dt);
 
     // --- COMPUTE NEXT DT, I.E. PERIOD STEP ---
     
@@ -1057,7 +975,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       // Compute the total volume of water that is in the water
       // depth (included the boundary cell).
       WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
-      wd_volume *= cell_area;
+      wd_volume *= GRID.length()*GRID.length();
       
       std::cout<<"Volume RAIN = "<<rain_volume<<" Volume INFLOW = "<<inflow_volume
 	       <<" Volume WD = "<<wd_volume<<std::endl;	

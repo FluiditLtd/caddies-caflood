@@ -59,11 +59,10 @@ private:
     CA::Box  box_area;	 	//!< The box of the area where the inflow is set.
     CA::Real grid_area;		//!< Compute the exact grid area, it used for volume checking. 
 
-    CA::Real volume;	        //!< Compute the total volume of inflow of the last period.
-    CA::Real inflow;		//!< The amount of inflow for each dt of the next period. 
+    CA::Real volume;	        //!< Compute the total volume of inflow of the last update period.
     
     Data():
-      index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0), inflow(0.0)
+      index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0)
     {}
     
     ~Data()
@@ -93,9 +92,8 @@ public:
   //! \attention This is the PERIOD volume.
   CA::Real volume();
 
-  //! Add the amount of inflow that was previously prepared into the
-  //! water depth
-  void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK);
+  //! Add the amount of inflow 
+  void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real next_dt);
 
   //! Compute the potential velocity that could happen in the next
   //! update/period step.

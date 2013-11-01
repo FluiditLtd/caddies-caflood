@@ -185,7 +185,7 @@ CA::Real RainManager::volume()
 }
 
 
-void RainManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK)
+void RainManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real next_dt)
 {
   // Loop through the rain event(s).
   for(size_t i = 0; i<_res.size(); ++i)

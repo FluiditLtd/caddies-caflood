@@ -111,34 +111,3 @@ int initWLEData(const CA::Grid&  GRID, const WLEvent& wle, WLEData& wledata)
 
   return 0;
 }
-
-
-int initIEData(const CA::Grid&  GRID, const IEvent& ie, IEData& iedata)
-{
-  iedata.index = 0;
-
-  // If the area vector does not contain four values, then the box
-  // stay empty. NO INFLOW.
-  if(ie.area.size()==4)
-  {
-    // Compute the given box area.
-    iedata.box_area = CA::Box::create(GRID, ie.area[0], ie.area[1], ie.area[2], ie.area[3]);
-  }
-  
-  // This is new. The area could have been identified as a zone, i.e. x,y,w,h/
-  if(ie.zone.size()==4)
-  {
-    // Compute the given box area from the zone.
-    CA::Point     tl( CA::Point::create(GRID, ie.zone[0], ie.zone[1]) );
-    CA::Unsigned  w = static_cast<CA::Unsigned>( std::ceil(ie.zone[2] / GRID.length()) );
-    CA::Unsigned  h = static_cast<CA::Unsigned>( std::ceil(ie.zone[3] / GRID.length()) );
-    
-    iedata.box_area = CA::Box(tl.x(),tl.y(),w,h);
-  }
-
-
-  iedata.grid_area = 0.0;
-  iedata.volume    = 0.0;
-
-  return 0;
-}
