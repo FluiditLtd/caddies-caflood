@@ -217,7 +217,9 @@ void InflowManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real 
 
     // Add (or subtract) the given volume into the water detph of the
     // given area.
-    CA::Execute::function(_datas[i].box_area, addInflow, _grid, WD, MASK, volume);           
+    // Do not add it if it is zero.
+    if(volume>=SMALL_INFLOW)      
+      CA::Execute::function(_datas[i].box_area, addInflow, _grid, WD, MASK, volume);           
       
     // Check if the simulation time now is equal or higher than the
     // time of the NEXT index.
