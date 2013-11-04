@@ -10,7 +10,7 @@
 #include"Setup.hpp"
 #include"Rain.hpp"
 #include"Inflow.hpp"
-#include"Events.hpp"
+#include"WaterLevel.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"
 
@@ -118,10 +118,7 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 // Include the CA 2D functions //
 // -------------------------//
 #include CA_2D_INCLUDE(computeArea)
-#include CA_2D_INCLUDE(computeCells)
 #include CA_2D_INCLUDE(setBoundaryEle)
-#include CA_2D_INCLUDE(addRaise)
-#include CA_2D_INCLUDE(addInflow)
 #include CA_2D_INCLUDE(outflowWeightedWDv2)
 #include CA_2D_INCLUDE(computeWDv2)
 #include CA_2D_INCLUDE(computeVelocityVAv1)
@@ -245,12 +242,6 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // an edge for an update step.
   CA::EdgeBuffReal AVGOUTF(GRID);
   
-  // ---- LOOKUP TABLE ----
-
-  // Create the lookup table for the pow(R,2/3) used in the manning
-  // equation.
-  //CA::LookupTableReal POWR23(GRID,0,4,0.01);
-
 
   // ---- ALARMS ----
 
@@ -361,30 +352,21 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
   //CA_DUMP_BUFF(ELV,0);  
 
-  // ---- NUMBER OF CELLS. ---
-
-  // Find the total number of cells.
-  // WD is used as temporary buffer here.
-  WD.fill(fulldomain, 0.0);
-  CA::Execute::function(fulldomain, computeCells, GRID, WD, MASK);    
-  WD.sequentialOp(fulldomain, total_cells, CA::Seq::Add);	
-
-
   // ----  INIT WATER LEVEL EVENT  ----
 
-  // List of water level event data.
-  std::vector<WLEData> wledatas(wles.size());
+  // Initialise the object that manage the water level events.
+  WaterLevelManager wl_manager(GRID,wles);
+  
+  // Add the area with water level in the computational domain.
+  wl_manager.addDomain(compdomain);
 
-  for(size_t i = 0; i<wles.size(); ++i)
-  {
-    initWLEData(GRID, wles[i], wledatas[i]);
+  // Get the elevation information.
+  wl_manager.getElevation(ELV);
 
-    // Retrieve the minimum elevation of the given area.
-    ELV.sequentialOp(wledatas[i].box_area, wledatas[i].min_elv, CA::Seq::MinAbs);	
-
-    // Add the area with water level rise in the computational domain.
-    compdomain.add(wledatas[i].box_area);
-  }
+  // Analyse the area where a water level event will happen. WD
+  // is used as temporary buffer.
+  if(setup.check_vols)
+    wl_manager.analyseArea(WD,MASK,fulldomain);
 
   // ----  INIT RAIN EVENT  ----
 
@@ -459,6 +441,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   potential_va = 0.0;
   potential_va = std::max( potential_va, rain_manager  .potentialVA(t,period_time_dt) );
   potential_va = std::max( potential_va, inflow_manager.potentialVA(t,period_time_dt) );
+  potential_va = std::max( potential_va, wl_manager    .potentialVA(t,period_time_dt) );
 
   // Compute the possible next time step using the critical velocity equations.
   dtn1 = std::min(setup.time_maxdt,alpha*GRID.length()/potential_va);
@@ -473,6 +456,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // for the next period.
   rain_manager  .prepare(t,period_time_dt,dt);
   inflow_manager.prepare(t,period_time_dt,dt);
+  wl_manager    .prepare(t,period_time_dt,dt);
   
   // ------------------------- MAIN LOOP -------------------------------
   while(iter<setup.time_maxiters && t<setup.time_end)
@@ -541,61 +525,6 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     if(dt>maxodt) maxodt=dt;
     if(dt<minodt) minodt=dt;    
 
-    // The potential velocity that an event can create is set to
-    // zero. This value is used to create eventual muliple loop of
-    // FLUX calculation. ATTENTION, at the moment is used only to
-    // compute potential_dt.
-    potential_va = 0;
-
-    // --- WATER LEVEL EVENT(s) ---
-
-    // Loop through the water level event(s).
-    for(size_t i = 0; i<wles.size(); ++i)
-    {
-      size_t index = wledatas[i].index;
-
-      // If the index is larger than the available rain/time, do
-      // nothing.
-      if(index >= wles[i].wls.size() )
-	continue;
-      
-      // Compute the water level at specific are using
-      // interpolation. Check if the index is the last available
-      // one. In this case use only one value.
-      CA::Real level      = 0;
-      if(index == wles[i].wls.size() -1)
-      {
-	level = wles[i].wls[index];
-      }
-      else
-      {	
-	CA::Real y0 = wles[i].wls[index];
-	CA::Real y1 = wles[i].wls[index+1];
-	CA::Real x0 = wles[i].times[index];
-	CA::Real x1 = wles[i].times[index+1];
-	level = y0 + (y1-y0) * ( (t - x0)/(x1 - x0) );
-      }
-      
-      // Compute the potential velocity using the maximum water depth
-      // in the area, i.e. the level minus the minimum elevation
-      CA::Real  water_depth = level - wledatas[i].min_elv;
-      potential_va = std::max(potential_va, std::sqrt( static_cast<CA::Real>(9.81)*( water_depth) ) );
-
-      // Given the way the CA2D model work, we need to set the water
-      // depth instead of the water level. Thus the water depth value
-      // at specific location is the value of the water level event
-      // minus the elevation.
-      CA::Execute::function(wledatas[i].box_area, addRaise, GRID, WD, ELV, MASK, level);     
-
-      // Check if the simulation time now is equal or higher than the
-      // time of the NEXT index.
-      if(t >= wles[i].times[index+1])
-	index++;
-      
-      // Update index.
-      wledatas[i].index = index;
-    }
-    
     // --- COMPUTE OUTFLUX ---
 
     // Clear the outflow buffer to zero (borders included).
@@ -638,6 +567,9 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // Add the eventual inflow events.
     inflow_manager.add(WD,MASK,t,dt);
 
+    // Add the eventual water level events.
+    wl_manager.add(WD,ELV,MASK,t,dt);
+
     // --- COMPUTE NEXT DT, I.E. PERIOD STEP ---
     
     // Check if the dt need to be re-computed.
@@ -652,6 +584,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       // Update the total volume from the events for the last period.
       rain_volume   += rain_manager.volume();
       inflow_volume += inflow_manager.volume();
+      // NO water level at the moment.
 
       // --- UPDATE VA  ---
       
@@ -674,6 +607,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       potential_va = 0.0;
       potential_va = std::max(potential_va, rain_manager  .potentialVA(t,period_time_dt) );
       potential_va = std::max(potential_va, inflow_manager.potentialVA(t,period_time_dt) );
+      potential_va = std::max(potential_va, wl_manager    .potentialVA(t,period_time_dt) );
 
       // Compute the possible next dt from the grid velocity and from
       // the potential velocity fron an event.
@@ -691,6 +625,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       // Prepare the Events manager for the next update .
       rain_manager  .prepare(t,period_time_dt,dt);
       inflow_manager.prepare(t,period_time_dt,dt);
+      wl_manager    .prepare(t,period_time_dt,dt);
 
     } // COMPUTE NEXT DT.
 
