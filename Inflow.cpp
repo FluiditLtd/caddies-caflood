@@ -139,6 +139,11 @@ void InflowManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_d
   // Loop through the inflow event(s).
   for(size_t i = 0; i<_ies.size(); ++i)
   {
+    // Compute the difference of inflow betwenn the expected and the
+    // added. This inflow should be added/subtracted as one off when it
+    // reaches high value.
+    _datas[i].one_off_inflow = (_datas[i].expected_inflow - _datas[i].total_inflow);
+
     // Set the volume to zero.
     _datas[i].volume = 0.0;
     
@@ -165,6 +170,13 @@ void InflowManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_d
     }
 
     _datas[i].volume = volume;      
+
+    // The expected amount of inflow for the next period.
+    _datas[i].expected_inflow = volume;
+    
+    // Reset the total amount of inflow for the next period.
+    _datas[i].total_inflow = 0.0;
+
   }
 }
 
@@ -210,6 +222,15 @@ void InflowManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real 
       volume = 0.5*(t1-t0)*(yt1-yt0)+(t1-t0)*(yt0);
     }
 
+    // Increse the amount of inflow added into the period.
+    // It needs to be added before the correction.
+    _datas[i].total_inflow += volume;
+
+    // Correct the volume
+    volume = static_cast<double>(volume)+_datas[i].one_off_inflow;
+    _datas[i].one_off_inflow = 0.0; // Reset the one of inflow.
+
+
     // ATTENTION The volume is the total volume, it need to be
     // divided by the number of cells that are going to receive the
     // inflow. 
@@ -219,7 +240,9 @@ void InflowManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real 
     // given area.
     // Do not add it if it is zero.
     if(volume>=SMALL_INFLOW)      
+    {
       CA::Execute::function(_datas[i].box_area, addInflow, _grid, WD, MASK, volume);           
+    }
       
     // Check if the simulation time now is equal or higher than the
     // time of the NEXT index.

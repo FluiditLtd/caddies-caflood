@@ -60,9 +60,21 @@ private:
     CA::Real grid_area;		//!< Compute the exact grid area, it used for volume checking. 
 
     CA::Real volume;	        //!< Compute the total volume of inflow of the last update period.
+
+    // These next variable are used to solve the problem of different
+    // volume when using float type for Real. The idea is to compute
+    // the amount of missing/extra inflow  in comparison to the
+    // one expected and add/subtract this `one-off` inflow. 
+
+    double   total_inflow;	//!< The total inflow added during a update period.
+    double   expected_inflow;	//!< The expected inflow added during a update period.
+
+    double   one_off_inflow;	//!< The inflow to add/subtract.
+
     
     Data():
-      index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0)
+      index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0),
+      total_inflow(0.0), expected_inflow(0.0), one_off_inflow(0.0)
     {}
     
     ~Data()
