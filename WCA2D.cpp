@@ -396,15 +396,11 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   
   // ----  INIT TIME PLOTS ----
 
-  // List of time plots data.
-  std::vector<TPData> tpdatas(tps.size());
   
-  for(size_t i = 0; i<tps.size(); ++i)
-  {
-    std::string filename = ad.output_dir+ad.sdir+setup.short_name+"_"+setup.timeplot_files[i];
-    initTPData(filename, GRID, ELV, tps[i], tpdatas[i]);
-  }
-
+  // Initialise the object that manage the time plots.
+  std::string basefilename = ad.output_dir+ad.sdir+setup.short_name;
+  TPManager tp_manager(GRID,ELV,tps,basefilename,setup.timeplot_files);
+  
   // ----  INIT RASTER GRID ----
 
   // List of raster grid data
@@ -631,84 +627,13 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
     // -------  OUTPUTS --------
     
-    TPoutputed    = false;
-    RGoutputed    = false;
+    // Output time plots.
+    tp_manager.output(t, iter, WD, V, setup.output_console);
 
-    // ----  TIME PLOTS ----
-    
-    for(size_t i = 0; i<tpdatas.size(); ++i)
-    {
-      // Check if it is time to plot and the file is good.
-      if(t >= tpdatas[i].time_next && tpdatas[i].file->good())
-      {
-	if(!TPoutputed && setup.output_console)
-	{
-	  std::cout<<"Update Time Plot :";
-	  TPoutputed = true;
-	}
-	
-	switch(tps[i].pv)
-	{
-	case PV::VEL:
-	  {
-	    if(setup.output_console)
-	      std::cout<<" VEL";
-
-	    // Retrieve the speed
-	    V.retrievePoints(tpdatas[i].pl,&(tpdatas[i].pvals[0]),tpdatas[i].pl.size());      
-
-	    (*tpdatas[i].file)<<iter<<", "<<t/60.0<<", ";	  
-	    // Write the speed
-	    for(CA::Unsigned p =0; p< tpdatas[i].pl.size(); p++)
-	    {	
-	      (*tpdatas[i].file)<<tpdatas[i].pvals[p]<<", ";
-	    }
-	    (*tpdatas[i].file)<<std::endl;
-	  }
-	  break;
-	case PV::WL:
-	  {
-	    if(setup.output_console)
-	      std::cout<<" WL";
-
-	    // Retrieve the water depth
-	    WD.retrievePoints(tpdatas[i].pl,&(tpdatas[i].pvals[0]),tpdatas[i].pl.size());      
-
-	    (*tpdatas[i].file)<<iter<<", "<<t/60.0<<", ";	  
-	    // Write the water level by adding the previously saved elevation.
-	    for(CA::Unsigned p =0; p< tpdatas[i].pl.size(); p++)
-	    {	
-	      (*tpdatas[i].file)<<tpdatas[i].pelvs[p] + tpdatas[i].pvals[p]<<", ";
-	    }
-	    (*tpdatas[i].file)<<std::endl;
-	  }
-	  break;
-	case PV::WD:
-	  {
-	    if(setup.output_console)
-	      std::cout<<" WD";
-
-	    WD.retrievePoints(tpdatas[i].pl,&(tpdatas[i].pvals[0]),tpdatas[i].pl.size());      
-
-	    (*tpdatas[i].file)<<iter<<", "<<t/60.0<<", ";	  
-	    for(CA::Unsigned p =0; p< tpdatas[i].pl.size(); p++)
-	    {	
-	      (*tpdatas[i].file)<<tpdatas[i].pvals[p]<<", ";
-	    }
-	    (*tpdatas[i].file)<<std::endl;
-	  }
-	  break;
-	}
-	
-	// Update the next time to plot.
-	tpdatas[i].time_next += tps[i].period;
-      }
-    }
-
-    if(TPoutputed && setup.output_console)
-      std::cout<<std::endl;
 
     // ----  RASTER GRID ----
+
+    RGoutputed    = false;
 
     VAsaved       = false;
     VAPEAKsaved   = false;
