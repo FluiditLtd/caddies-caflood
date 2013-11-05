@@ -117,7 +117,6 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 // -------------------------//
 // Include the CA 2D functions //
 // -------------------------//
-#include CA_2D_INCLUDE(computeArea)
 #include CA_2D_INCLUDE(setBoundaryEle)
 #include CA_2D_INCLUDE(outflowWeightedWDv2)
 #include CA_2D_INCLUDE(computeWDv2)
@@ -305,24 +304,9 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // possible expanding domain.
   bool         checkbox = setup.expand_domain;         
 
-  // These variables are used to indicates if the output to console
-  // happen in the case of time plot or raster grid output.
-  bool TPoutputed    = false;
-  bool RGoutputed    = false;
-
-  // Since WL variable does not exist. We need to save WD and then use
-  // ELV to compute WL. The following variable is used to save WD only
-  // once if both WD and WL are requested. The same is the case for
-  // VEL, which needs WD.
-  bool VAsaved       = false;
-  bool VAPEAKsaved   = false;
-  bool VAPEAKupdated = false;
-  bool WDsaved       = false;
-  bool WDPEAKsaved   = false;
-  bool WDPEAKupdated = false;
-
-
-  // Update the peak only every update time.
+  // Variable which indicates if the PEAK values need to be updated.
+  // The PEAK values can be updated on every update step or on every
+  // steps.
   bool UpdatePEAK    = false;
   
   // -- CREATE FULL MASK ---
@@ -394,14 +378,15 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   if(setup.check_vols)
     inflow_manager.analyseArea(WD,MASK,fulldomain);
   
-  // ----  INIT TIME PLOTS ----
+  // ----  INIT TIME PLOTS AND RASTER GRID ----
 
-  
-  // Initialise the object that manage the time plots.
   std::string basefilename = ad.output_dir+ad.sdir+setup.short_name;
+
+  // Initialise the object that manage the time plots.
   TPManager tp_manager(GRID,ELV,tps,basefilename,setup.timeplot_files);
   
-  // ----  INIT RASTER GRID ----
+  // Initialise the object that manage the time plots.
+  RGManager rg_manager(GRID,rgs,basefilename,setup.rastergrid_files);    
 
   // List of raster grid data
   std::vector<RGData> rgdatas(rgs.size());
@@ -626,146 +611,23 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     } // COMPUTE NEXT DT.
 
     // -------  OUTPUTS --------
-    
+         
     // Output time plots.
     tp_manager.output(t, iter, WD, V, setup.output_console);
 
-
-    // ----  RASTER GRID ----
-
-    RGoutputed    = false;
-
-    VAsaved       = false;
-    VAPEAKsaved   = false;
-    VAPEAKupdated = false;
-    WDsaved       = false;
-    WDPEAKsaved   = false;
-    WDPEAKupdated = false;
-      
-    // ----  UPDATE PEAK ----
-
-    // Update the peak only one there is a update period step.
-    if(UpdatePEAK || setup.update_peak_dt)
+    // Check if we need to update the peak at every time step.
+    if(setup.update_peak_dt)
+      UpdatePEAK = true;
+    
+    // Update the peak
+    if(UpdatePEAK)
     {
+      rg_manager.updatePeak(compdomain,WD,V,MASK);
       UpdatePEAK = false;
-
-      for(size_t i = 0; i<rgdatas.size(); ++i)
-      {
-	// Check if the peak values need to be updated.
-	if(rgs[i].peak == true)
-	{
-	  switch(rgs[i].pv)
-	  {
-	  case PV::VEL:
-	    // Update the absolute maximum velocity.
-	    // ATTENTION need to be tested.
-	    if(!VAPEAKupdated)
-	    {
-	      CA::Execute::function(compdomain, updatePEAKC, GRID, (*rgpeak.V), V, MASK);
-	      VAPEAKupdated = true;
-	    }
-	    // ATTENTION! The break is removed since in order to
-	    // post-process VA we need WD. 
-	    // break;	  
-	  case PV::WL:
-	  case PV::WD:	  
-	    // Update the absolute maximum water depth only once.
-	    if(!WDPEAKupdated)
-	    {
-	      CA::Execute::function(compdomain, updatePEAKC, GRID, (*rgpeak.WD), WD, MASK);
-	      WDPEAKupdated = true;
-	    }
-	    break;
-	  }
-	}
-      }
     }
 
-    // ----  WRITE GRID ----
-
-    for(size_t i = 0; i<rgdatas.size(); ++i)
-    {
-      // Check if it is time to plot!
-      if(t >= rgdatas[i].time_next)
-      {	
-	if(!RGoutputed && setup.output_console)
-	{
-	  std::cout<<"Write Raster Grid: ";
-	  RGoutputed = true;
-	}
-
-	// Retrieve the string of the time.
-	std::string strtime;
-	CA::toString(strtime,std::floor(t+0.5));
-
-	// Save the buffer using direct I/O where the main ID is the
-	// buffer name and the subID is the timestep.
-	switch(rgs[i].pv)
-	{
-	case PV::VEL:	  
-	  if(!VAsaved)
-	  {
-	    if(setup.output_console)
-	      std::cout<<" VA";	  
-	    V.saveData(setup.short_name+"_V",strtime);
-	    A.saveData(setup.short_name+"_A",strtime);
-	    VAsaved = true;
-	  }
-	  // ATTENTION! The break is removed since in order to
-	  // post-process VA we need WD. 
-	  //break;
-	case PV::WL:
-	case PV::WD:
-	  if(!WDsaved)
-	  {
-	    if(setup.output_console)
-	      std::cout<<" WD";
-	  
-	    WD.saveData(setup.short_name+"_WD",strtime);
-	    WDsaved = true;
-	  }
-	  break;
-	}
-	
-	// Check if the peak values need to be saved.
-	if(rgs[i].peak == true)
-	{
-	  // Non velocity raster grid.
-	  switch(rgs[i].pv)
-	  {
-	  case PV::VEL:	  
-	    if(!VAPEAKsaved)
-	    {
-	      if(setup.output_console)
-		std::cout<<" VAPEAK";
-	  
-	      rgpeak.V->saveData(setup.short_name+"_V","PEAK");
-	      VAPEAKsaved = true;
-	    }
-	    // ATTENTION! The break is removed since in order to
-	    // post-process VA we need WD. 
-	    // break;
-	  case PV::WL:
-	  case PV::WD:
-	    if(!WDPEAKsaved)
-	    {
-	      if(setup.output_console)
-		std::cout<<" WDPEAK";
-	  
-	      rgpeak.WD->saveData(setup.short_name+"_WD","PEAK");
-	      WDPEAKsaved = true;
-	    }
-	    break;
-	  }
-	  
-	}
-	// Update the next time to save a raster grid.
-	rgdatas[i].time_next += rgs[i].period;
-      }
-    }
-
-    if(RGoutputed && setup.output_console)
-      std::cout<<std::endl;
+    // Output raster grid.
+    rg_manager.output(t, WD, V, A, setup.short_name, setup.output_console);
 	      
     // ---- END OF ITERATION ----
 
@@ -774,55 +636,15 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     oiter++;
   }  
 
-  // ----  PEAK RASTER GRID ----
+  // --- END OF MAIN LOOP ---
 
-  RGoutputed    = false;
+  // --- OUTPUT PEAK ---
+  
+  // Make sure to output the last peack value.
+  rg_manager.updatePeak(compdomain,WD,V,MASK);
+  rg_manager.outputPeak(WD, V, setup.short_name, setup.output_console);
 
-  for(size_t i = 0; i<rgdatas.size(); ++i)
-  {
-    // Check if the peak values need to be saved.
-    if(rgs[i].peak == true)
-    {
 
-      if(!RGoutputed && setup.output_console)
-      {
-	std::cout<<"Write Raster Grid: ";
-	RGoutputed = true;
-      }
-
-      // Non velocity raster grid.
-      switch(rgs[i].pv)
-      {
-      case PV::VEL:	  
-	if(!VAPEAKsaved)
-	{
-	  if(setup.output_console)
-	    std::cout<<" VAPEAK";
-	  
-	  rgpeak.V->saveData(setup.short_name+"_V","PEAK");
-	  VAPEAKsaved = true;
-	}
-	// ATTENTION! The break is removed since in order to
-	// post-process VA we need WD. 
-	// break;
-      case PV::WL:
-      case PV::WD:
-	if(!WDPEAKsaved)
-	{
-	  if(setup.output_console)
-	    std::cout<<" WDPEAK";
-	  
-	  rgpeak.WD->saveData(setup.short_name+"_WD","PEAK");
-	  WDPEAKsaved = true;
-	}
-	break;
-      }
-    }
-  }
-
-  if(RGoutputed && setup.output_console)
-    std::cout<<std::endl;
-	  
   // --- CONSOLE OUTPUT ---
   
   // Check if it is time to output to console.
