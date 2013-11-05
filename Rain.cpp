@@ -140,6 +140,11 @@ void RainManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_dt)
   // Loop through the rain event(s).
   for(size_t i = 0; i<_res.size(); ++i)
   {
+    // Compute the difference of rain betwenn the expected and the
+    // added. This rain should be added/subtracted as one off when it
+    // reaches high value.
+    _datas[i].one_off_rain = (_datas[i].expected_rain - _datas[i].total_rain);
+
     // Set the rain and volume to zero.
     _datas[i].rain   = 0.0;
     _datas[i].volume = 0.0;
@@ -164,6 +169,12 @@ void RainManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_dt)
     // Get the rain (transformed in metres from mm) for the next period.
     CA::Real period_rain = (_res[i].rains[index] * 0.001) * (period_time_dt/3600.0);
 
+    // The expected amount of rain for the next period.
+    _datas[i].expected_rain = period_rain;
+    
+    // Reset the total amount of rain for the next period.
+    _datas[i].total_rain = 0.0;
+    
     // Add the volume.
     _datas[i].volume = period_rain * _datas[i].grid_area;
     
@@ -193,7 +204,14 @@ void RainManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t,
     // Do not add the rain if it is zero.
     if(_datas[i].rain>=SMALL_RAIN)
     {
-      CA::Execute::function(_datas[i].box_area, addRain, _grid, WD, MASK, _datas[i].rain); 
+      // The amount of rain to add.
+      CA::Real rain = static_cast<double>(_datas[i].rain)+_datas[i].one_off_rain;
+      _datas[i].one_off_rain = 0.0; // Reset the one of rain.
+	
+      CA::Execute::function(_datas[i].box_area, addRain, _grid, WD, MASK, rain); 
+
+      // Increse the amount of rain added into the period.
+      _datas[i].total_rain += _datas[i].rain;
     }
   }
 }

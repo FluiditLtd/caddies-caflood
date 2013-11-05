@@ -59,9 +59,20 @@ private:
 
     CA::Real volume;	        //!< Compute the total volume of rain of the last period.
     CA::Real rain;		//!< The amount of rain for each dt of the next period. 
+
+    // These next variable are used to solve the problem of different
+    // volume when using float type for Real. The idea is to compute
+    // the amount of missing/extra rain  in comparison to the
+    // one expected and add/subtract this `one-off` rain. 
+
+    double   total_rain;	//!< The total rain added during a update period.
+    double   expected_rain;	//!< The expected rain added during a update period.
+
+    double   one_off_rain;	//!< The rain to add/subtract.
     
     Data():
-      index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0), rain(0.0)
+      index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0), rain(0.0),
+      total_rain(0.0), expected_rain(0.0), one_off_rain(0.0)
     {}
     
     ~Data()
