@@ -99,14 +99,18 @@ public:
   //! \params WD         The cell buffer with the water depth.
   //! \params V          The cell buffer with the velocity magnitude.
   //! \params MASK       The cell buffer with the mask
-  void updatePeak(const CA::BoxList&  domain, CA::CellBuffReal& WD, CA::CellBuffReal& V, CA::CellBuffState& MASK);
+  //! \return True if the peak were updated.
+  bool updatePeak(const CA::BoxList&  domain, CA::CellBuffReal& WD, CA::CellBuffReal& V, CA::CellBuffState& MASK);
 
-  //! Output only the peak raster grids 
+
+  //! Output only the peak raster grids
+  //! \params t          The simulation time.
   //! \params WD         The cell buffer with the water depth.
   //! \params V          The cell buffer with the velocity magnitude.
   //! \params saveid     The id to use to save the buffers.
   //! \params output     If true, output information to console.
-  void outputPeak(CA::CellBuffReal& WD, CA::CellBuffReal& V, const std::string& saveid, bool output);
+  //! \return True if the rasters were outputed.
+  bool outputPeak(CA::Real t,CA::CellBuffReal& WD, CA::CellBuffReal& V, const std::string& saveid, bool output);
 
   
   //! Output all the raster grids 
@@ -116,7 +120,8 @@ public:
   //! \params A          The cell buffer with the velocity angle.
   //! \params saveid     The id to use to save the buffers.
   //! \params output     If true, output information to console.
-  void output(CA::Real t, CA::CellBuffReal& WD, CA::CellBuffReal& V, CA::CellBuffReal& A,
+  //! \return True if the rasters were outputed.
+  bool output(CA::Real t, CA::CellBuffReal& WD, CA::CellBuffReal& V, CA::CellBuffReal& A,
 	      const std::string& saveid, bool output);
   
 

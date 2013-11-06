@@ -308,6 +308,10 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // The PEAK values can be updated on every update step or on every
   // steps.
   bool UpdatePEAK    = false;
+
+  // Variable which indicates if the raster habe been saved in the lat
+  // iteration.
+  bool RGwritten     = false;
   
   // -- CREATE FULL MASK ---
   
@@ -442,6 +446,13 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // ------------------------- MAIN LOOP -------------------------------
   while(iter<setup.time_maxiters && t<setup.time_end)
   {
+    // Set this to false. This will be set to the righ value during an
+    // update step or before the update itself.
+    UpdatePEAK = false;
+
+    // The raster have not been written this itertaion.
+    RGwritten     = false;
+
     // If there is tehe request to expand the domain.
     // Deactivate Box alarm(s) and set them.
     if(setup.expand_domain)
@@ -621,13 +632,10 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     
     // Update the peak
     if(UpdatePEAK)
-    {
       rg_manager.updatePeak(compdomain,WD,V,MASK);
-      UpdatePEAK = false;
-    }
 
-    // Output raster grid.
-    rg_manager.output(t, WD, V, A, setup.short_name, setup.output_console);
+    // Output raster grid. Keep track if the raster have been written.
+    RGwritten = rg_manager.output(t, WD, V, A, setup.short_name, setup.output_console);
 	      
     // ---- END OF ITERATION ----
 
@@ -640,10 +648,14 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
   // --- OUTPUT PEAK ---
   
-  // Make sure to output the last peack value.
-  rg_manager.updatePeak(compdomain,WD,V,MASK);
-  rg_manager.outputPeak(WD, V, setup.short_name, setup.output_console);
-
+  // Check if the raster have not been written in the last
+  // iteration. If not, we need to make sure that we save the PEAK.
+  if(!RGwritten)
+  {
+    // Make sure to output the last peack value.  
+    rg_manager.updatePeak(compdomain,WD,V,MASK);
+    rg_manager.outputPeak(t,WD, V, setup.short_name, setup.output_console);
+  }
 
   // --- CONSOLE OUTPUT ---
   

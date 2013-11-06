@@ -123,7 +123,7 @@ RGManager::~RGManager()
 }
 
 
-void RGManager::updatePeak(const CA::BoxList&  domain, 
+bool RGManager::updatePeak(const CA::BoxList&  domain, 
 			   CA::CellBuffReal& WD, CA::CellBuffReal& V, CA::CellBuffState& MASK)
 {
   // This variable make sure that the peak are updated only once.
@@ -160,10 +160,13 @@ void RGManager::updatePeak(const CA::BoxList&  domain,
       }
     }
   }
+
+  return (WDPEAKupdated || VAPEAKupdated);
 }
 
 
-void RGManager::outputPeak(CA::CellBuffReal& WD, CA::CellBuffReal& V, const std::string& saveid,  bool output)
+bool RGManager::outputPeak(CA::Real t, CA::CellBuffReal& WD, CA::CellBuffReal& V, 
+			   const std::string& saveid,  bool output)
 {
   // This variables is used to indicates if the output to console
   // happen in the case of time plot.
@@ -183,7 +186,7 @@ void RGManager::outputPeak(CA::CellBuffReal& WD, CA::CellBuffReal& V, const std:
     {
       if(!outputed && output)
       {
-	std::cout<<"Write Raster Grid: ";
+	std::cout<<"Write Raster Grid (MIN "<<t/60<<"): ";
 	outputed = true;
       }
 
@@ -222,10 +225,12 @@ void RGManager::outputPeak(CA::CellBuffReal& WD, CA::CellBuffReal& V, const std:
 
   if(outputed && output)
     std::cout<<std::endl;
+
+  return (WDPEAKsaved || VAPEAKsaved);
 }
 
 
-void RGManager::output(CA::Real t, CA::CellBuffReal& WD, 
+bool RGManager::output(CA::Real t, CA::CellBuffReal& WD, 
 		       CA::CellBuffReal& V, CA::CellBuffReal& A, 
 		       const std::string& saveid,
 		       bool output)
@@ -250,7 +255,7 @@ void RGManager::output(CA::Real t, CA::CellBuffReal& WD,
     {	
       if(!outputed && output)
       {
-	std::cout<<"Write Raster Grid: ";
+	std::cout<<"Write Raster Grid (MIN "<<t/60<<"): ";
 	outputed = true;
       }
 
@@ -327,6 +332,7 @@ void RGManager::output(CA::Real t, CA::CellBuffReal& WD,
   if(outputed && output)
     std::cout<<std::endl;
 
+  return (WDPEAKsaved || VAPEAKsaved || WDsaved || VAsaved);
 }
 
 

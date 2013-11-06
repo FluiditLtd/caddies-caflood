@@ -125,7 +125,7 @@ void TPManager::output(CA::Real t, CA::Unsigned iter, CA::CellBuffReal& WD, CA::
     {
       if(!outputed && output)
       {
-	std::cout<<"Update Time Plot :";
+	std::cout<<"Update Time Plot  (MIN "<<t/60<<"): ";
 	outputed = true;
       }
 	
