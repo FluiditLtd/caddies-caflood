@@ -395,7 +395,7 @@ int main(int argc, char* argv[])
       std::cout<<"Time Plot Name     : "<<tp.name<<std::endl;
       std::cout<<"Physical Variable  : "<<tp.pv<<std::endl;
       std::cout<<"Points X Name      : ";
-      for(size_t i = 0; i< tp.xcoos.size(); ++i)
+      for(size_t i = 0; i< tp.pnames.size(); ++i)
 	std::cout<<tp.pnames[i]<<" ";
       std::cout<<std::endl;
       std::cout<<"Points X Coo       : ";
