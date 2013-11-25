@@ -23,8 +23,8 @@ THE SOFTWARE.
 
 */
 
-//! \file WCA2D.cpp
-//! Perform the Weighted CA2D flood modelling 
+//! \file CADDIES2D.cpp
+//! Perform the CADDIES2D flood modelling 
 //! contact: m.guidolin [at] exeter.ac.uk
 //! \date 2013-03
 
@@ -143,21 +143,23 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 // Include the CA 2D functions //
 // -------------------------//
 #include CA_2D_INCLUDE(setBoundaryEle)
-#include CA_2D_INCLUDE(outflowWeightedWDv2)
-#include CA_2D_INCLUDE(computeWDv2)
-#include CA_2D_INCLUDE(computeVelocityVAv1)
+#include CA_2D_INCLUDE(outflowWCA2Dv1)
+#include CA_2D_INCLUDE(waterdepthWCA2Dv1)
+#include CA_2D_INCLUDE(velocityWCA2Dv1)
 #include CA_2D_INCLUDE(updatePEAKC)
 #include CA_2D_INCLUDE(updatePEAKE)
 
 
-int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
-	  const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, const std::vector<IEvent>& ies, 
-	  const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
+int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
+	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
+	      const std::vector<IEvent>& ies, 
+	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
 {
 
   if(setup.output_computation)
   {
     std::cout<<"Simulation : "<<setup.sim_name<< std::endl;
+    std::cout<<"Model      : "<<ad.model<< std::endl;
     std::cout<<"------------------------------------------" << std::endl; 
   }
   
@@ -262,9 +264,9 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
   // Create the outflow edge buffer.
   CA::EdgeBuffReal OUTF(GRID);
 
-  // During the computation this store the average amount of flow of
-  // an edge for an update step.
-  CA::EdgeBuffReal AVGOUTF(GRID);
+  // During the computation this store:
+  // WCA2Dv1 the average flow for  an edge for an update step.
+  CA::EdgeBuffReal AVG(GRID);
   
 
   // ---- ALARMS ----
@@ -433,7 +435,7 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
 
   // Clear the outflow buffer to zero (borders included).
   OUTF.clear();
-  AVGOUTF.clear();
+  AVG.clear();
 
   // Set the wather depth to be zero.
   WD.fill(fulldomain, 0.0);
@@ -547,9 +549,9 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // Clear the outflow buffer to zero (borders included).
     OUTF.clear();
           
-    // Compute outflow using weighted method version 2.
+    // Compute outflow using WCA2Dv1.
     // This version check if there is an outflow in the border of the box.
-    CA::Execute::function(compdomain, outflowWeightedWDv2, GRID, OUTF, ELV, WD, MASK, ALARMS,
+    CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF, ELV, WD, MASK, ALARMS,
 			  ignore_wd, tol_delwl,dt, irough);
 
     // If there is a request to expand the domain.
@@ -573,8 +575,8 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
     // --- UPDATE WL AND WD  ---
     
     // Update the water depth with the outflux and store the average
-    // amount of outflux. 
-    CA::Execute::function(compdomain, computeWDv2, GRID, WD, OUTF, AVGOUTF, MASK, dt, period_time_dt);
+    // amount of outflux for the WCA2Dv1 model. 
+    CA::Execute::function(compdomain, waterdepthWCA2Dv1, GRID, WD, OUTF, AVG, MASK, dt, period_time_dt);
 
     // --- EXTRA LATERAL EVENT(s) ---
 
@@ -607,12 +609,12 @@ int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>&
       
       // Compute the velocity using the total outflux.
       // Attention the tollerance is different here. 
-      CA::Execute::function(compdomain, computeVelocityVAv1, GRID, V, A, WD, ELV, AVGOUTF, MASK, 
+      CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, AVG, MASK, 
 			    tol_va, period_time_dt, irough);
 
       // CLear the average outflux. This improve the computed
       // velocity.
-      AVGOUTF.clear();
+      AVG.clear();
                   
       // Retrieve the maximum velocity 
       V.sequentialOp(compdomain, vamax,CA::Seq::MaxAbs);                

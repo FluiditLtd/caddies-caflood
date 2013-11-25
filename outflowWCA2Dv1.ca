@@ -24,19 +24,21 @@ THE SOFTWARE.
 */
 
 // Compute the outflow from the water depth using weight method
-// version 1 (Fraction v8). 
+// version 1 
 // This version compute a simplified manning equation and the
 // critical flow using the water depth to find the maximum flow.  This
 // maximum flow is considered as maximum flow allowed in the
 // direction of maximum difference in water volume. Thus the maximum
 // flow is used to limit the total outflow from the cells.
 
+// ATTENTION! This version check if there is an outflow when the cell
+// is in the border of the box and set an alarm.
 
-CA_FUNCTION outflowWeightedWDv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
-				CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I WD, 
-				CA_CELLBUFF_STATE_I MASK, 
-				CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
-				CA_GLOB_REAL_I dt, CA_GLOB_REAL_I irough)
+CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
+			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I WD, 
+			   CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
+			   CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
+			   CA_GLOB_REAL_I dt, CA_GLOB_REAL_I irough)
 {					       
   // Initialise the grid
   CA_GRID_INIT(grid);
@@ -195,4 +197,10 @@ CA_FUNCTION outflowWeightedWDv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
       caWriteEdgeBuffReal(grid,OUTF,k,flux);
     }
   }
+  
+  // If the code reach here mean that there is an outflux.  Check if
+  // the cell is in the border of the box and if it is the case set an
+  // alarm.
+  if(caBoxStatus(grid)>0)
+    caActivateAlarm(grid, ALARMS,0);
 }

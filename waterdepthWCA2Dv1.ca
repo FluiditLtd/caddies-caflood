@@ -23,14 +23,14 @@ THE SOFTWARE.
 
 */
 
-// Update the water depth with the outflux v2
+// Update the water depth with the outflux for teh WCA2Dv1 model,
 // This version store the average amount of flux in m^3/s passed through the edge.
 // ATTENTION The Water depth of the boundary cells (bit 31
 // mask) is updated. The bounday cell should have only influx.
 
-CA_FUNCTION computeWDv2(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_REAL_I OUTF, 
-			CA_EDGEBUFF_REAL_IO AVGOUTF, CA_CELLBUFF_STATE_I MASK, 
-			CA_GLOB_REAL_I dt, CA_GLOB_REAL_I updatedt)
+CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_REAL_I OUTF, 
+			      CA_EDGEBUFF_REAL_IO AVGOUTF, CA_CELLBUFF_STATE_I MASK, 
+			      CA_GLOB_REAL_I dt, CA_GLOB_REAL_I updatedt)
 {
   // Initialise the grid
   CA_GRID_INIT(grid);

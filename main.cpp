@@ -61,8 +61,9 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	     const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
 
 
-//! Perform the WCA2D flood modelling algorithm using the given
-//! parameters (see WCA2D.cpp).
+//! Perform the CADDIES2D flood modelling algorithm using the given
+//! parameters (see CADDIES2D.cpp).
+//! This function contain only the WCA2D model.
 //! \param[in] ad       The arguments data.
 //! \param[in] setup    The setup of the simulation.
 //! \param[in] eg       The elevation grid.
@@ -72,9 +73,10 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 //! \param[in] tps      The list of time plot outputs.
 //! \param[in] rgs      The list of raster grid outputs.
 //! \return A non zero value if there was an error.
-int WCA2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
-	  const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, const std::vector<IEvent>& ies, 
-	  const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
+int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
+	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
+	      const std::vector<IEvent>& ies, 
+	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
 
 
 int main(int argc, char* argv[])
@@ -154,7 +156,7 @@ int main(int argc, char* argv[])
     if((*i)->name == "WCA2D")
     {
       ad.pre_proc = true;
-      ad.WCA2D = true;
+      ad.model = MODEL::WCA2Dv1;
       ad.post_proc = true;
     }
 
@@ -458,15 +460,17 @@ int main(int argc, char* argv[])
     }
   }
 
-  //! Now perform the CA2D flood modelling if requested.   
-  if(ad.WCA2D)
+  //! Now perform the CADDIES2D flood modelling if requested.   
+  if(ad.model!=MODEL::UNKNOWN)
   {
     if(ad.info)
-      std::cout<<std::endl<<"Starting WCA2D flood modelling "<<std::endl;
-
-    if(WCA2D(ad,setup,eg,res,wles,ies,tps,rgs)!=0)
     {
-      std::cerr<<"Error while performing WCA2D flood modelling"<<std::endl;
+      std::cout<<std::endl<<"Starting CADDIES2D flood modelling "<<std::endl;
+    }
+
+    if(CADDIES2D(ad,setup,eg,res,wles,ies,tps,rgs)!=0)
+    {
+      std::cerr<<"Error while performing CADDIES flood modelling"<<std::endl;
       return EXIT_FAILURE;    
     }
     

@@ -34,6 +34,40 @@ THE SOFTWARE.
 #include<fstream>
 
 
+
+// Transform an input string into a model
+std::istream& operator>>(std::istream& in, MODEL::Type& m)
+{
+  CA::String tmp;
+  in>>tmp;
+
+  if( CA::compareCaseInsensitive(tmp, "WCA2Dv1" ) )
+  {
+    m = MODEL::WCA2Dv1; 
+    return in;
+  }
+  m = MODEL::UNKNOWN;
+  in.setstate(std::ios::failbit);
+  return in;
+}
+
+
+// Transform model variable enum into an output string.
+std::ostream& operator<<(std::ostream& out, MODEL::Type& m)
+{
+  switch(m)
+  {
+  case MODEL::WCA2Dv1 :
+    out<<"WCA2Dv1";
+    break;
+  default:
+    out<<"UNKNOWN";
+  }
+
+  return out;
+}
+
+
 // Transform an input string into a physical variable enum.
 std::istream& operator>>(std::istream& in, PV::Type& pv)
 {

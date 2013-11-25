@@ -55,6 +55,22 @@ inline std::string removeExtension(const std::string& filename)
   return filename.substr(0, lastdot); 
 }
 
+//! Identifies the model to use in the CADDIES2D flood modelling
+struct MODEL
+{
+  enum Type
+  {
+    UNKNOWN = 0,
+    WCA2Dv1,
+  };
+};
+
+
+//! Transform an input string into a physical variable enum.
+std::istream& operator>>(std::istream& in,  MODEL::Type& m);
+//! Transform a physical variable enum into an output string.
+std::ostream& operator<<(std::ostream& out, MODEL::Type& m);
+
 
 //! Public data structure that contains all the data set by the
 //! arguments.
@@ -92,8 +108,8 @@ struct ArgsData
   //! If true, perform postprocessing.
   bool post_proc;
 
-  //! If true, perform WCA2D model.
-  bool WCA2D;
+  //! Which Model.
+  MODEL::Type model;
 
   // Constructor
   ArgsData():
@@ -112,7 +128,7 @@ struct ArgsData
     info(false),
     pre_proc(false),
     post_proc(false),
-    WCA2D(false)
+    model(MODEL::UNKNOWN)
   {}
   
   ~ArgsData(){}

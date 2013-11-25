@@ -23,16 +23,16 @@ THE SOFTWARE.
 
 */
 
-// Compute the velocity as magnitude and direction
+// Compute the velocity as magnitude and direction for the WCA2Dv1 model
 // This version take the minimum between the velocity computed by:
 // 1) The average outflow of the last time period identified by updatedt.
 // 2) Mannnig equation when there is a water channel between two cell
 // 3) The critical velocity from a cell.
-CA_FUNCTION computeVelocityVAv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,
-				CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, 
-				CA_EDGEBUFF_REAL_I AVGOUTF,
-				CA_CELLBUFF_STATE_I MASK,
-				CA_GLOB_REAL_I tol, CA_GLOB_REAL_I updatedt, CA_GLOB_REAL_I irough)
+CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,
+			    CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, 
+			    CA_EDGEBUFF_REAL_I AVGOUTF,
+			    CA_CELLBUFF_STATE_I MASK,
+			    CA_GLOB_REAL_I tol, CA_GLOB_REAL_I updatedt, CA_GLOB_REAL_I irough)
 {
   // Initialise the grid
   CA_GRID_INIT(grid);
