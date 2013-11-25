@@ -470,14 +470,14 @@ int main(int argc, char* argv[])
 
     if(CADDIES2D(ad,setup,eg,res,wles,ies,tps,rgs)!=0)
     {
-      std::cerr<<"Error while performing CADDIES flood modelling"<<std::endl;
+      std::cerr<<"Error while performing CADDIES2D flood modelling"<<std::endl;
       return EXIT_FAILURE;    
     }
     
     if(ad.info)
     {
       std::cout<<std::endl;  
-      std::cout<<"Ending WCA2D flood modelling "<<std::endl;
+      std::cout<<"Ending CADDIES2D flood modelling "<<std::endl;
     }
   }
 
