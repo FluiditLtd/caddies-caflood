@@ -25,12 +25,12 @@ THE SOFTWARE.
 
 // Compute the velocity as magnitude and direction for the WCA2Dv1 model
 // This version take the minimum between the velocity computed by:
-// 1) The average outflow of the last time period identified by updatedt.
+// 1) The total outflow of the last time period divided by updatedt.
 // 2) Mannnig equation when there is a water channel between two cell
 // 3) The critical velocity from a cell.
 CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,
 			    CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, 
-			    CA_EDGEBUFF_REAL_I AVGOUTF,
+			    CA_EDGEBUFF_REAL_I TOTOUTF,
 			    CA_CELLBUFF_STATE_I MASK,
 			    CA_GLOB_REAL_I tol, CA_GLOB_REAL_I updatedt, CA_GLOB_REAL_I irough)
 {
@@ -49,8 +49,8 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
   // and the main one.
   CA_ARRAY_CREATE(grid, CA_REAL, ANGLE, caNeighbours+1);
 
-  // Create the array which will contain the average water fluxes on the edges.
-  CA_ARRAY_CREATE(grid, CA_REAL, AVGFLUXES, caEdges+1);
+  // Create the array which will contain the total water fluxes on the edges.
+  CA_ARRAY_CREATE(grid, CA_REAL, TOTFLUXES, caEdges+1);
 
   // Read Mask.
   CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
@@ -70,8 +70,8 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
   for(int k=0; k<=caNeighbours; ++k)
     WLA[k]=ELVA[k]+WDA[k];
 
-  // Read the average fluxes of the main cell.
-  caReadEdgeBuffRealEdgeArray(grid, AVGOUTF,index, AVGFLUXES);
+  // Read the total fluxes of the main cell.
+  caReadEdgeBuffRealEdgeArray(grid, TOTOUTF,index, TOTFLUXES);
 
   // Read the angle of each cell.
   caAngleCellArray(grid,ANGLE);
@@ -94,21 +94,21 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
     // Default velocity.
     CA_REAL vh      = 0.0;
     
-    // In AVGFLUXES  If the edge is one of the edges that
+    // In TOTFLUXES  If the edge is one of the edges that
     // can be updated without overwriting the buffer, the outflux is
     // positive otherwise is negative. Change that each outflux is
     // positive and each influx is negative.  
     if(e<=caUpdateEdges(grid))
-      AVGFLUXES[e] = AVGFLUXES[e];
+      TOTFLUXES[e] = TOTFLUXES[e];
     else
-      AVGFLUXES[e] = -AVGFLUXES[e];
+      TOTFLUXES[e] = -TOTFLUXES[e];
 
     // Compute the velocity considering only the cell with enough
     // water and a positive outfluxes.
-    if(caAbsReal(AVGFLUXES[e])>0 && wd >= tol)      
+    if((TOTFLUXES[e])>0 && wd >= tol)      
     {
-      // This is not divided by seconds since the avgflux is already in seconds.
-      vh = AVGFLUXES[e] / (wd * dx);
+      // Find the velocity using the total fluxes
+      vh = TOTFLUXES[e] / (wd * dx * updatedt);
 
       // Compute Radious and Slope
       CA_REAL delwl = caAbsReal(WLA[0]-WLA[e]); 

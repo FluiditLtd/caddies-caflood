@@ -265,8 +265,8 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   CA::EdgeBuffReal OUTF(GRID);
 
   // During the computation this store:
-  // WCA2Dv1 the average flow for  an edge for an update step.
-  CA::EdgeBuffReal AVG(GRID);
+  // WCA2Dv1 the total flow for  an edge for an update step.
+  CA::EdgeBuffReal TOT(GRID);
   
 
   // ---- ALARMS ----
@@ -435,7 +435,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 
   // Clear the outflow buffer to zero (borders included).
   OUTF.clear();
-  AVG.clear();
+  TOT.clear();
 
   // Set the wather depth to be zero.
   WD.fill(fulldomain, 0.0);
@@ -574,9 +574,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     
     // --- UPDATE WL AND WD  ---
     
-    // Update the water depth with the outflux and store the average
+    // Update the water depth with the outflux and store the total
     // amount of outflux for the WCA2Dv1 model. 
-    CA::Execute::function(compdomain, waterdepthWCA2Dv1, GRID, WD, OUTF, AVG, MASK, dt, period_time_dt);
+    CA::Execute::function(compdomain, waterdepthWCA2Dv1, GRID, WD, OUTF, TOT, MASK, dt, period_time_dt);
 
     // --- EXTRA LATERAL EVENT(s) ---
 
@@ -609,12 +609,11 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       
       // Compute the velocity using the total outflux.
       // Attention the tollerance is different here. 
-      CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, AVG, MASK, 
+      CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, TOT, MASK, 
 			    tol_va, period_time_dt, irough);
 
-      // CLear the average outflux. This improve the computed
-      // velocity.
-      AVG.clear();
+      // CLear the total outflux.
+      TOT.clear();
                   
       // Retrieve the maximum velocity 
       V.sequentialOp(compdomain, vamax,CA::Seq::MaxAbs);                

@@ -24,12 +24,12 @@ THE SOFTWARE.
 */
 
 // Update the water depth with the outflux for teh WCA2Dv1 model,
-// This version store the average amount of flux in m^3/s passed through the edge.
+// This version store the total amount of flux in m^3 passed through the edge.
 // ATTENTION The Water depth of the boundary cells (bit 31
 // mask) is updated. The bounday cell should have only influx.
 
 CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_REAL_I OUTF, 
-			      CA_EDGEBUFF_REAL_IO AVGOUTF, CA_CELLBUFF_STATE_I MASK, 
+			      CA_EDGEBUFF_REAL_IO TOTOUTF, CA_CELLBUFF_STATE_I MASK, 
 			      CA_GLOB_REAL_I dt, CA_GLOB_REAL_I updatedt)
 {
   // Initialise the grid
@@ -42,9 +42,9 @@ CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_
   // edges.
   CA_ARRAY_CREATE(grid, CA_REAL, FLUXES, caEdges+1);
 
-  // Create the array which will contain the average water fluxes on the
+  // Create the array which will contain the total water fluxes on the
   // edges.
-  CA_ARRAY_CREATE(grid, CA_REAL, AVGFLUXES, caEdges+1);
+  CA_ARRAY_CREATE(grid, CA_REAL, TOTFLUXES, caEdges+1);
 
   // Read Mask.
   CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
@@ -70,8 +70,8 @@ CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_
   // Read the fluxes of the main cell.
   caReadEdgeBuffRealEdgeArray(grid, OUTF,index, FLUXES);
 
-  // Read the average fluxes of the main cell.
-  caReadEdgeBuffRealEdgeArray(grid, AVGOUTF, index, AVGFLUXES);
+  // Read the total fluxes of the main cell.
+  caReadEdgeBuffRealEdgeArray(grid, TOTOUTF, index, TOTFLUXES);
 
   CA_REAL outflux = 0.0;
 
@@ -93,11 +93,10 @@ CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_
   // Loop through the edges that can be updated.
   for(int e=1; e<=caUpdateEdges(grid); e++)
   {    
-    // Find the  average/mean of an update step using the exponential smoothing
-    CA_REAL alpha   = dt/updatedt;
-    CA_REAL avgflux = (alpha * (FLUXES[e]/dt)) + ( (1-alpha) * AVGFLUXES[e] );
+    // compute the  totalflux of an update step.
+    CA_REAL totflux = FLUXES[e] + TOTFLUXES[e];
 
     // Write the new value on the edge.
-    caWriteEdgeBuffReal(grid, AVGOUTF, e, avgflux);
+    caWriteEdgeBuffReal(grid, TOTOUTF, e, totflux);
   }
 }
