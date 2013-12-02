@@ -652,7 +652,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       
       // Compute the velocity using the total outflux.
       // Attention the tollerance is different here. 
-      // Check if there is water mvoement over the upstream elevation threshould.
+      // Check if there is water movement over the upstream elevation threshould.
       CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, TOT, MASK, VELALARMS,
 			    tol_va, period_time_dt, irough, upstr_elv);
 

@@ -29,7 +29,7 @@ THE SOFTWARE.
 // 2) Mannnig equation when there is a water channel between two cell
 // 3) The critical velocity from a cell.
 
-// ATTENTION! This version check if there any in/out flux over an
+// ATTENTION! This version check if there is any in/out flux over an
 // elevation threshould and set an alarm.
 
 CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,

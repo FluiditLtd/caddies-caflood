@@ -277,6 +277,7 @@ CA::Real RainManager::potentialVA(CA::Real t, CA::Real period_time_dt)
   return potential_va;
 }
 
+
 CA::Real RainManager::endTime()
 {
   CA::Real t_end = 0.0;
