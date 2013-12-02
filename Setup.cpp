@@ -52,6 +52,9 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
   setup.rast_wd_tol        = 0.01 ;
   setup.update_peak_dt     = false;
   setup.expand_domain      = false;
+  setup.ignore_upstream    = false;
+  setup.upstream_reduction = 1.0;
+
   
   // Read values
   std::ifstream ifile(filename.c_str());
@@ -129,7 +132,6 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
 
     if(CA::compareCaseInsensitive("Ignore WD",tokens[0],true))
       READ_TOKEN(setup.ignore_wd,tokens[1],tokens[0]);
-
 
     if(CA::compareCaseInsensitive("Boundary Ele",tokens[0],true))
       READ_TOKEN(setup.boundary_elv,tokens[1],tokens[0]);
@@ -254,6 +256,14 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
       READ_TOKEN(setup.expand_domain,str,tokens[0]);
     }
 
+    if(CA::compareCaseInsensitive("Ignore Upstream",tokens[0],true))
+    {
+      std::string str = CA::trimToken(tokens[1]);
+      READ_TOKEN(setup.ignore_upstream,str,tokens[0]);
+    }
+
+    if(CA::compareCaseInsensitive("Upstream Reduction",tokens[0],true))
+      READ_TOKEN(setup.upstream_reduction,tokens[1],tokens[0]);
   }
 
   // The updatedt cannot be more than 60 seconds.

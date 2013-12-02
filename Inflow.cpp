@@ -328,6 +328,27 @@ CA::Real InflowManager::potentialVA(CA::Real t, CA::Real period_time_dt)
 }
 
 
+CA::Real InflowManager::endTime()
+{
+  CA::Real t_end = 0.0;
+
+  // Loop through the inflow event(s).
+  for(size_t i = 0; i<_ies.size(); ++i)
+  {
+    // Loop through the time steps.
+    for(size_t j = 1; j<_ies[i].times.size(); j++)
+    {
+      // Check if there is no inflow at this time but there was at
+      // previous time updated end_t.
+      if(_ies[i].ins[j-1]>0.0 && _ies[i].ins[j]==0)
+	t_end = std::max(t_end,_ies[i].times[j]);
+    }
+  }
+
+  return t_end;
+}
+
+
 int InflowManager::initData(const IEvent& ie, Data& data)
 {
   data.index = 0;

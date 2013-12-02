@@ -81,7 +81,7 @@ inline CA::Box extendBox(CA::Box extent, CA::Box& fullbox, CA::Unsigned lines)
 //! Output to console the information about the simulation.
 void outputConsole(CA::Unsigned iter, CA::Unsigned oiter, CA::Real t, CA::Real dt, 
 		   CA::Real avgodt, CA::Real minodt, CA::Real maxodt, 
-		   CA::Real vamax, 
+		   CA::Real vamax, CA::Real upstr_elv,
 		   const Setup& setup)
 {
   std::cout<<"-----"<<std::endl;
@@ -89,7 +89,8 @@ void outputConsole(CA::Unsigned iter, CA::Unsigned oiter, CA::Real t, CA::Real d
 	   <<" Last DT = "<<dt<<std::endl;
   std::cout<<"Last iterations  = "<<oiter <<" Average DT ="<<avgodt/oiter
 	   <<" Min DT = "<<minodt<<" Max DT = "<<maxodt<<std::endl;	
-  std::cout<<"VAMAX= "<<vamax<<std::endl;    
+  std::cout<<"UPSTRELV = "<<upstr_elv<<std::endl;
+  std::cout<<"VAMAX    = "<<vamax<<std::endl;    
 
   std::cout<<"-----"<<std::endl;
 
@@ -146,6 +147,7 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 #include CA_2D_INCLUDE(outflowWCA2Dv1)
 #include CA_2D_INCLUDE(waterdepthWCA2Dv1)
 #include CA_2D_INCLUDE(velocityWCA2Dv1)
+#include CA_2D_INCLUDE(removeUpstr)
 #include CA_2D_INCLUDE(updatePEAKC)
 #include CA_2D_INCLUDE(updatePEAKE)
 
@@ -239,9 +241,17 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     return 1;
   }
 
-  if(setup.output_console)
-    std::cout<<"Loaded Elevation data"<< std::endl;
+  // Highest elevation
+  CA::Real     high_elv = 90000;
 
+  // Find highest elevation
+  ELV.sequentialOp(fulldomain, high_elv, CA::Seq::Max);
+
+  if(setup.output_console)
+  {
+    std::cout<<"Loaded Elevation data"<< std::endl;
+    std::cout<<"Highest elevation = "<< high_elv<<std::endl;
+  }
   // ----  CELL BUFFERS ----
     
   // Create  the water depth cell buffer.
@@ -271,9 +281,13 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 
   // ---- ALARMS ----
 
-  // Create the alarm(s).
+  // Create the alarm(s) checked during the outflux computation.
   // Alarm 1: indicates when there is going to be an outflux outside of the computational domain.
-  CA::Alarms  ALARMS(GRID,1);
+  CA::Alarms  OUTFALARMS(GRID,1);
+
+  // Create the alarm(s) checked during the velocity computation
+  // Alarm 1: indicates when there is still water movement over the elevation threshould.
+  CA::Alarms  VELALARMS(GRID,1);
 
 
   // ----  SCALAR VALUES ----
@@ -283,6 +297,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   CA::Real     dt     = setup.time_maxdt;  // Starting delta time.
   CA::Real     dtn1   = 0.0;
   CA::Real     nodata = eg.nodata;
+
+  // The simulation time when the events will not produce any further water.
+  CA::Real     t_end_events = setup.time_start; 
 
   // The level of water that can be ignored.
   CA::Real     ignore_wd  = setup.ignore_wd;
@@ -320,6 +337,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // Maximum velocity.
   CA::Real     vamax=0.0;
 
+  // Upstream elevation value. This value is the elevation where the
+  // water "probably cannot reach anymore".
+  CA::Real     upstr_elv = high_elv;
+
   // The total number of cells.
   CA::Real    total_cells = 0.0;
 
@@ -340,6 +361,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // iteration.
   bool RGwritten     = false;
   
+
   // -- CREATE FULL MASK ---
   
   CA::createCellMask(fulldomain,GRID,ELV,MASK,nodata);
@@ -470,6 +492,19 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   inflow_manager.prepare(t,period_time_dt,dt);
   wl_manager    .prepare(t,period_time_dt,dt);
   
+  // -- PREMATURE END --
+
+  // get the time when the events will not add any further water.
+  t_end_events = std::max(t_end_events, rain_manager.endTime());
+  t_end_events = std::max(t_end_events, inflow_manager.endTime());
+  t_end_events = std::max(t_end_events, wl_manager.endTime());
+
+  if(setup.output_computation)
+  {
+    std::cout<<"The events will end at "<<t_end_events<<" (s) simulation time"<< std::endl;
+    std::cout<<"------------------------------------------" << std::endl; 
+  }
+
   // ------------------------- MAIN LOOP -------------------------------
   while(iter<setup.time_maxiters && t<setup.time_end)
   {
@@ -480,12 +515,12 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     // The raster have not been written this itertaion.
     RGwritten     = false;
 
-    // If there is tehe request to expand the domain.
+    // If there is the request to expand the domain.
     // Deactivate Box alarm(s) and set them.
     if(setup.expand_domain)
     {
-      ALARMS.deactivateAll();
-      ALARMS.set();
+      OUTFALARMS.deactivateAll();
+      OUTFALARMS.set();
     }
 
     // --- CONSOLE OUTPUT ---
@@ -493,7 +528,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     // Check if it is time to output to console.
     if(setup.output_console && t>= time_output)
     {
-      outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,setup);
+      outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,upstr_elv,setup);
 
       oiter  = 0;
       avgodt = 0.0;
@@ -550,19 +585,19 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     OUTF.clear();
           
     // Compute outflow using WCA2Dv1.
-    // This version check if there is an outflow in the border of the box.
-    CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF, ELV, WD, MASK, ALARMS,
+    // Check if there is an outflow in the border of the box.
+    CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF, ELV, WD, MASK, OUTFALARMS,
 			  ignore_wd, tol_delwl,dt, irough);
 
     // If there is a request to expand the domain.
     // Get the alarms states.
     if(setup.expand_domain)
     {
-      ALARMS.get();
+      OUTFALARMS.get();
     
       // Check if the box alarm is active, that mean there is some
       // outflux on the border of the computational domain.
-      if(ALARMS.isActivate(0))
+      if(OUTFALARMS.isActivate(0))
       {
 	// Set the computational domain to be the extend version and
 	// create the new extended one.
@@ -594,6 +629,14 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     // Check if the dt need to be re-computed.
     if(t>=time_dt)
     {   
+      if(setup.ignore_upstream)
+      {
+	// Deactivate the alarms checked during the velocity
+	// calculation.
+	VELALARMS.deactivateAll();
+	VELALARMS.set();
+      }
+
       // Lets make sure there are not any rounding errors.
       t = time_dt;
 
@@ -609,8 +652,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       
       // Compute the velocity using the total outflux.
       // Attention the tollerance is different here. 
-      CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, TOT, MASK, 
-			    tol_va, period_time_dt, irough);
+      // Check if there is water mvoement over the upstream elevation threshould.
+      CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, TOT, MASK, VELALARMS,
+			    tol_va, period_time_dt, irough, upstr_elv);
 
       // CLear the total outflux.
       TOT.clear();
@@ -645,6 +689,24 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       inflow_manager.prepare(t,period_time_dt,dt);
       wl_manager    .prepare(t,period_time_dt,dt);
 
+      if(setup.ignore_upstream)
+      {
+	// Check the ALARMS computed during the velocity step.
+	VELALARMS.get();
+	
+	// If the alarms one is not active, then there was not any cell
+	// which had the water level over the upstream elevation
+	// threshold and some flux at the same time. So we can remove
+	// the cell from the computation and then lower the upstream
+	// threshold.
+	// ATTENTION This action is performed only when all the events
+	// finished to add water to the domain.
+	if(!VELALARMS.isActivate(0) && t > t_end_events)
+	{
+	  CA::Execute::function(fulldomain, removeUpstr, GRID, MASK, ELV, upstr_elv);
+	  upstr_elv -= setup.upstream_reduction;
+	}
+      }
     } // COMPUTE NEXT DT.
 
     // -------  OUTPUTS --------
@@ -688,7 +750,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // Check if it is time to output to console.
   if(setup.output_console && t>= time_output)
   {    
-    outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,setup);
+    outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,upstr_elv,setup);
 
     if(setup.check_vols == true)
     {

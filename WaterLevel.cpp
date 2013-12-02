@@ -315,6 +315,20 @@ CA::Real WaterLevelManager::potentialVA(CA::Real t, CA::Real period_time_dt)
 }
 
 
+CA::Real WaterLevelManager::endTime()
+{
+  CA::Real t_end = 0.0;
+
+  // Loop through the water level event(s).
+  for(size_t i = 0; i<_wles.size(); ++i)
+  {
+    t_end = std::max(t_end,_wles[i].times.back());
+  }
+
+  return t_end;
+}
+
+
 int WaterLevelManager::initData(const WLEvent& wle, Data& data)
 {
   data.index = 0;

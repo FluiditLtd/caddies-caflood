@@ -277,6 +277,26 @@ CA::Real RainManager::potentialVA(CA::Real t, CA::Real period_time_dt)
   return potential_va;
 }
 
+CA::Real RainManager::endTime()
+{
+  CA::Real t_end = 0.0;
+
+  // Loop through the rain event(s).
+  for(size_t i = 0; i<_res.size(); ++i)
+  {
+    // Loop through the time steps.
+    for(size_t j = 0; j<_res[i].times.size(); j++)
+    {
+      // Check if it is still raining at this time. If yest then
+      // updated end_t.
+      if(_res[i].rains[j]>0.0)
+	t_end = std::max(t_end,_res[i].times[j]);
+    }
+  }
+
+  return t_end;
+}
+
 
 int RainManager::initData(const RainEvent& re, Data& data)
 {

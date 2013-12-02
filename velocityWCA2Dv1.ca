@@ -28,11 +28,16 @@ THE SOFTWARE.
 // 1) The total outflow of the last time period divided by updatedt.
 // 2) Mannnig equation when there is a water channel between two cell
 // 3) The critical velocity from a cell.
+
+// ATTENTION! This version check if there any in/out flux over an
+// elevation threshould and set an alarm.
+
 CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,
 			    CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, 
 			    CA_EDGEBUFF_REAL_I TOTOUTF,
-			    CA_CELLBUFF_STATE_I MASK,
-			    CA_GLOB_REAL_I tol, CA_GLOB_REAL_I updatedt, CA_GLOB_REAL_I irough)
+			    CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
+			    CA_GLOB_REAL_I tol, CA_GLOB_REAL_I updatedt, CA_GLOB_REAL_I irough, 
+			    CA_GLOB_REAL_I upstr_elv)
 {
   // Initialise the grid
   CA_GRID_INIT(grid);
@@ -80,6 +85,10 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
   CA_REAL x = 0.0;
   CA_REAL y = 0.0;
 
+  // The total amount of influx and outflux in the last update dt for
+  // this central cell.
+  CA_REAL totflux  = 0.0;
+
   // Cycle through the edges
   for(int e=1; e<=caEdges; e++)
   {
@@ -103,6 +112,9 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
     else
       TOTFLUXES[e] = -TOTFLUXES[e];
 
+    // Get the total amount of out/in flux.
+    totflux += caAbsReal(TOTFLUXES[e]);
+
     // Compute the velocity considering only the cell with enough
     // water and a positive outfluxes.
     if((TOTFLUXES[e])>0 && wd >= tol)      
@@ -125,6 +137,7 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
       x += vh * caCosReal(ANGLE[e]);
       y += vh * caSinReal(ANGLE[e]);     
     } 
+    
   }
 
   // Compute magnitude and direction
@@ -141,4 +154,14 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
   // Write the results
   caWriteCellBuffReal(grid,V,speed);
   caWriteCellBuffReal(grid,A,angle);
+
+  
+  // If there is some in/out flux in the central cell, and the water
+  // level of this cell is over the upstrem elevation thresould. Set
+  // the alarm.
+  if(totflux>0.0 && WLA[0]>upstr_elv)
+  {
+    caActivateAlarm(grid, ALARMS,0);    
+  }
+  
 }

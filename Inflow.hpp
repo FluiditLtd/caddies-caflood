@@ -137,6 +137,9 @@ public:
   //! This is used to limit the time step.
   CA::Real potentialVA(CA::Real t, CA::Real period_time_dt); 
 
+  //! Return the simulation time when the events will not add any
+  //! further water.
+  CA::Real endTime();
   
 protected:
 
@@ -154,6 +157,7 @@ private:
 
   //! List of inflow event data.
   std::vector<Data> _datas;
+
 };
 
 #endif

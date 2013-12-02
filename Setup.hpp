@@ -120,6 +120,10 @@ struct Setup
 
   // --- EXPAND DOMAIN ---
   bool expand_domain;		//!< If true expand the computational domain when needed.
+
+  // --- IGNORE UPSTREAM
+  bool     ignore_upstream;     //!< If true ignore upstream cells.
+  CA::Real upstream_reduction;	//!< The amount of elevation to reduce
 };
 
 

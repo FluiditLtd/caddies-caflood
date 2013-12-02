@@ -244,6 +244,8 @@ int main(int argc, char* argv[])
     std::cout<<"Raster WD Tol           : "<<setup.rast_wd_tol<<std::endl;
     std::cout<<"Update Peak Every DT    : "<<setup.update_peak_dt<<std::endl;
     std::cout<<"Expand Domain           : "<<setup.expand_domain<<std::endl;
+    std::cout<<"Ignore Upstream         : "<<setup.ignore_upstream<<std::endl;
+    std::cout<<"Upstream Reduction      : "<<setup.upstream_reduction<<std::endl;
   }
 
   if(ad.info)

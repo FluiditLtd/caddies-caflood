@@ -1,0 +1,62 @@
+/*
+    
+Copyright (c) 2013 Centre for Water Systems,
+                   University of Exeter
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+*/
+
+// Remove the cell (i.e. set it to nodata) that have the elvation
+// lower than the upstream threshould. This threshould is used to
+// indicate that there where not any water movement over that
+// elevation.
+
+CA_FUNCTION removeUpstr(CA_GRID grid, CA_CELLBUFF_STATE_IO MASK, CA_CELLBUFF_REAL_I ELV, 
+			CA_GLOB_REAL_I upstr_elv)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Retrive the index of the main cell.
+  CA_INDEX index = caIndex(grid, 0);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // If the main cell has no data 
+  // then do nothing.
+  if(bit0 == 0)
+    return;
+  
+  // Retrieve the elevation of the main cell.
+  CA_REAL  elv = caReadCellBuffReal(grid,ELV,index);
+
+  // If the elevation is over the threshould set the bit0 of the mask
+  // to false and write back the mask.
+  if(elv>upstr_elv)
+  {
+    bit0 = 0;
+    mask = caWriteBitsState(bit0,mask,0,1);
+    caWriteCellBuffState(grid,MASK,mask);      
+  }
+}
