@@ -312,8 +312,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   CA::Real     tol_va    = std::max(setup.ignore_wd,static_cast<CA::Real>(0.01));
 
   // This is the period of when the velocity is computed.
-  CA::Real     period_time_dt = setup.time_updatedt;
-  CA::Real     time_dt        = t + period_time_dt;          // The next simulation time when to update dt.
+  CA::Real     period_time_dt   = setup.time_updatedt;
+  CA::Real     time_dt          = t + period_time_dt;          // The next simulation time when to update dt.
+  CA::Unsigned iter_dt          = 0;			       // The number of iteration before next update dt.
+
 
  // The fraction of time_maxdt second used to compute the next the dt
   CA::Unsigned dtfrac    = 1;		  
@@ -484,6 +486,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // Check that dt is between  min max.
   computeDT(dt,dtfrac,dtn1,setup);
 
+  // Update the number of iteration before the next update dt.
+  iter_dt = dtfrac;
+
+
   // -- PREPARE THE EVENTS MANAGERS WITH THE NEW DT ---
 
   // Get the amount of events that would happen in each area for each dt
@@ -627,7 +633,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     // --- COMPUTE NEXT DT, I.E. PERIOD STEP ---
     
     // Check if the dt need to be re-computed.
-    if(t>=time_dt)
+    if(t>=time_dt || --iter_dt==0)
     {   
       if(setup.ignore_upstream)
       {
@@ -681,6 +687,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // Check that dt is between  min max.
       computeDT(dt,dtfrac,dtn1,setup);
       
+      // Update the number of iteration before the next update dt.
+      iter_dt = dtfrac;
+
       // When the dt need to be recomputed.
       time_dt += period_time_dt;
     
