@@ -635,6 +635,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     // Check if the dt need to be re-computed.
     if(t>=time_dt || --iter_dt==0)
     {   
+      // Clear the Velocity
+      V.clear();
+
       if(setup.ignore_upstream)
       {
 	// Deactivate the alarms checked during the velocity
