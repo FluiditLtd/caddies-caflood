@@ -31,11 +31,8 @@ CA_FUNCTION zeroedVA(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,
   // Initialise the grid
   CA_GRID_INIT(grid);
 
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
-
-  // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  // Read Mask of the main cell.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
@@ -46,14 +43,14 @@ CA_FUNCTION zeroedVA(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,
     return;
   
   // Retrieve the water depth of the main cell.
-  CA_REAL  wdmain = caReadCellBuffReal(grid,WD,index);
+  CA_REAL  wdmain = caReadCellBuffReal(grid,WD,0);
 
   // Set the multiplier to zero if water depth is less then tolerance.
   CA_REAL  mul = caStepReal(wdmain,tol);
 
   // Retrieve the V and A of the main cell and use the multiplier.
-  CA_REAL  v = mul*caReadCellBuffReal(grid,V,index);
-  CA_REAL  a = mul*caReadCellBuffReal(grid,A,index);
+  CA_REAL  v = mul*caReadCellBuffReal(grid,V,0);
+  CA_REAL  a = mul*caReadCellBuffReal(grid,A,0);
 
   // Update the V and A.
   caWriteCellBuffReal(grid,V,v);  

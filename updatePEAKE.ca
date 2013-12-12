@@ -40,11 +40,8 @@ CA_FUNCTION updatePEAKE(CA_GRID grid, CA_EDGEBUFF_REAL_IO PEAK, CA_EDGEBUFF_REAL
   // Create the array which will contain the peak edges.
   CA_ARRAY_CREATE(grid, CA_REAL, PEAKE, caEdges+1);
 
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
-
-  // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  // Read Mask of the main cell.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
@@ -59,10 +56,10 @@ CA_FUNCTION updatePEAKE(CA_GRID grid, CA_EDGEBUFF_REAL_IO PEAK, CA_EDGEBUFF_REAL
     return;
 
   // Read the edges of the main cell.
-  caReadEdgeBuffRealEdgeArray(grid, SRC, index, SRCE);
+  caReadEdgeBuffRealEdgeArray(grid, SRC, 0, SRCE);
 
   // Read the edges of the peak values.
-  caReadEdgeBuffRealEdgeArray(grid, PEAK, index, PEAKE);
+  caReadEdgeBuffRealEdgeArray(grid, PEAK, 0, PEAKE);
 
   // Loop through the edges.
   for(int e=1; e<=caEdges; e++)

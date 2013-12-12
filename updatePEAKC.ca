@@ -31,11 +31,8 @@ CA_FUNCTION updatePEAKC(CA_GRID grid, CA_CELLBUFF_REAL_IO PEAK, CA_CELLBUFF_REAL
   // Initialise the grid
   CA_GRID_INIT(grid);
 
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
-
   // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
@@ -50,10 +47,10 @@ CA_FUNCTION updatePEAKC(CA_GRID grid, CA_CELLBUFF_REAL_IO PEAK, CA_CELLBUFF_REAL
     return;
   
   // Retrive the source value.
-  CA_REAL  src  = caReadCellBuffReal(grid,SRC,index);
+  CA_REAL  src  = caReadCellBuffReal(grid,SRC,0);
 
   // Retrive the absolute value of the PEAK buffer.
-  CA_REAL  peak = caReadCellBuffReal(grid,PEAK,index);
+  CA_REAL  peak = caReadCellBuffReal(grid,PEAK,0);
   
   // Get the maximum.
   CA_REAL  max = caMaxReal(caAbsReal(src),peak);

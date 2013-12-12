@@ -42,15 +42,12 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
 {					       
   // Initialise the grid
   CA_GRID_INIT(grid);
-
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
   
   // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Retrieve the water depth of the main cell.
-  CA_REAL  wdmain = caReadCellBuffReal(grid,WD,index);
+  CA_REAL  wdmain = caReadCellBuffReal(grid,WD,0);
   
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
@@ -117,7 +114,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
     if(delwl>tol_delwl)
     {
       // Compute the difference in water volume.
-      CA_REAL delwv = delwl * caArea(grid,caIndex(grid,k));
+      CA_REAL delwv = delwl * caArea(grid,k);
 
       // Get the minimum difference in water volume of the downstreams cell.
       mindelwv = caMinReal(mindelwv, delwv);
@@ -137,7 +134,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
     {
       weight_max = weight;
       delwl_max  = delwl;
-      dx_max     = caLength(grid,index,k);
+      dx_max     = caLength(grid,0,k);
     }
   }
 
@@ -174,7 +171,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   // 1) the minimum difference of water level of the  neighbourhood 
   // 2) the water level in the cell.
   // 3) the total flux available depending on the maximum flux.
-  CA_REAL outwv = caMinReal(caMinReal(mindelwv,wdmain*caArea(grid,index)), max_flux*totalw/weight_max);
+  CA_REAL outwv = caMinReal(caMinReal(mindelwv,wdmain*caArea(grid,0)), max_flux*totalw/weight_max);
   
 
   // Compute volume outflow from the main cell using the eventual

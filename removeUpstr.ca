@@ -34,11 +34,8 @@ CA_FUNCTION removeUpstr(CA_GRID grid, CA_CELLBUFF_STATE_IO MASK, CA_CELLBUFF_REA
   // Initialise the grid
   CA_GRID_INIT(grid);
 
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
-
   // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
@@ -49,7 +46,7 @@ CA_FUNCTION removeUpstr(CA_GRID grid, CA_CELLBUFF_STATE_IO MASK, CA_CELLBUFF_REA
     return;
   
   // Retrieve the elevation of the main cell.
-  CA_REAL  elv = caReadCellBuffReal(grid,ELV,index);
+  CA_REAL  elv = caReadCellBuffReal(grid,ELV,0);
 
   // If the elevation is over the threshould set the bit0 of the mask
   // to false and write back the mask.

@@ -31,11 +31,8 @@ CA_FUNCTION setBoundaryEle(CA_GRID grid, CA_CELLBUFF_REAL_IO ELV, CA_CELLBUFF_ST
   // Initialise the grid
   CA_GRID_INIT(grid);
 
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
-
   // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Read bit 31 (true if the main cell is nodata and at least one
   // neighbour has data)

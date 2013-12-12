@@ -35,9 +35,6 @@ CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_
   // Initialise the grid
   CA_GRID_INIT(grid);
 
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
-
   // Create the array which will contain the water fluxes on the
   // edges.
   CA_ARRAY_CREATE(grid, CA_REAL, FLUXES, caEdges+1);
@@ -46,8 +43,8 @@ CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_
   // edges.
   CA_ARRAY_CREATE(grid, CA_REAL, TOTFLUXES, caEdges+1);
 
-  // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  // Read Mask of the main cell.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
@@ -62,16 +59,16 @@ CA_FUNCTION waterdepthWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_EDGEBUFF_
     return;
 
   // Retrive the current value of the water depth.
-  CA_REAL  wd  = caReadCellBuffReal(grid,WD,index);
+  CA_REAL  wd  = caReadCellBuffReal(grid,WD,0);
 
   // Retrive the area of the main cell.
-  CA_REAL  area = caArea(grid,index);
+  CA_REAL  area = caArea(grid,0);
 
   // Read the fluxes of the main cell.
-  caReadEdgeBuffRealEdgeArray(grid, OUTF,index, FLUXES);
+  caReadEdgeBuffRealEdgeArray(grid, OUTF,0, FLUXES);
 
   // Read the total fluxes of the main cell.
-  caReadEdgeBuffRealEdgeArray(grid, TOTOUTF, index, TOTFLUXES);
+  caReadEdgeBuffRealEdgeArray(grid, TOTOUTF, 0, TOTFLUXES);
 
   CA_REAL outflux = 0.0;
 

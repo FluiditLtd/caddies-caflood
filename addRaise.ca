@@ -30,11 +30,8 @@ CA_FUNCTION addRaise(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_REAL_I EL
   // Initialise the grid
   CA_GRID_INIT(grid);
 
-  // Retrive the index of the main cell.
-  CA_INDEX index = caIndex(grid, 0);
-
   // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,index);
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
 
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
@@ -45,7 +42,7 @@ CA_FUNCTION addRaise(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_REAL_I EL
     return;
 
   // Retrive the value of the elevation
-  CA_REAL  elv  = caReadCellBuffReal(grid,ELV,index);
+  CA_REAL  elv  = caReadCellBuffReal(grid,ELV,0);
 
   // The value of the water depth is the water level of the event
   // minus the elevation.
