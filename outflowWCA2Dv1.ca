@@ -107,7 +107,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
 
     // Compute the difference in water level (wich cannot be more than
     // a limiting value). This will be store in WLA;
-    CA_REAL delwl = caMinReal(WATER[0] - WATER[k], 10.0);
+    CA_REAL delwl = caMinReal(WATER[0] - WATER[k], 50.0);
 
     // If the difference in water level is higher tha a tolerance, then
     // the neighbour cell is downstream. Upstream cell are ignored.
