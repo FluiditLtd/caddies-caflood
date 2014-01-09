@@ -113,7 +113,8 @@ struct Setup
 
   // ---  RASTER OUTPUT ---
   bool     rast_vel_as_vect;	//!< If true output the velocity raster as a vector field.  
-  CA::Real rast_wd_tol;		//!< If true output the velocity raster as a vector field.  
+  CA::Real rast_wd_tol;		//!< Ignore cell in raster that are lower than this tolerance.
+  bool     rast_boundary;	//!< If true output the value of boundary cell. 
 
   // ---  PEAK UPDATE ---
   bool  update_peak_dt;	        //!< If true update the peak at every time step. Default false.

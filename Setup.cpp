@@ -50,6 +50,7 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
   setup.remove_prec_data   = true ;
   setup.rast_vel_as_vect   = true ;
   setup.rast_wd_tol        = 0.01 ;
+  setup.rast_boundary      = false;
   setup.update_peak_dt     = false;
   setup.expand_domain      = false;
   setup.ignore_upstream    = false;
@@ -242,6 +243,12 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
     {
       std::string str = CA::trimToken(tokens[1]);
       READ_TOKEN(setup.rast_wd_tol,str,tokens[0]);
+    }
+
+    if(CA::compareCaseInsensitive("Raster Boundary",tokens[0],true))
+    {
+      std::string str = CA::trimToken(tokens[1]);
+      READ_TOKEN(setup.rast_boundary,str,tokens[0]);
     }
 
     if(CA::compareCaseInsensitive("Update Peak Every DT",tokens[0],true))

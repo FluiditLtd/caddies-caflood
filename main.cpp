@@ -242,6 +242,7 @@ int main(int argc, char* argv[])
     std::cout<<"Remove Pre-Proc Data    : "<<setup.remove_prec_data<<std::endl;
     std::cout<<"Raster VEL Vector       : "<<setup.rast_vel_as_vect<<std::endl;
     std::cout<<"Raster WD Tol           : "<<setup.rast_wd_tol<<std::endl;
+    std::cout<<"Raster Boundary Output  : "<<setup.rast_boundary<<std::endl;
     std::cout<<"Update Peak Every DT    : "<<setup.update_peak_dt<<std::endl;
     std::cout<<"Expand Domain           : "<<setup.expand_domain<<std::endl;
     std::cout<<"Ignore Upstream         : "<<setup.ignore_upstream<<std::endl;

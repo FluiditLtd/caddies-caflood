@@ -26,7 +26,8 @@ THE SOFTWARE.
 // Zeroed Water Depth that is less than tolerance. 
 // WARNING compute the absolute value.
 
-CA_FUNCTION zeroedWD(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_STATE_I MASK, CA_GLOB_REAL_I tol)
+CA_FUNCTION zeroedWD(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_STATE_I MASK,
+		     CA_GLOB_REAL_I tol, CA_GLOB_STATE_I boundary)
 {
   // Initialise the grid
   CA_GRID_INIT(grid);
@@ -37,16 +38,24 @@ CA_FUNCTION zeroedWD(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_STATE_I M
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
 
-  // If the main cell has no data 
+  // Read bit 31 (true if the main cell is nodata in at least one
+  // neighbour has data)
+  CA_STATE bit31  = caReadBitsState(mask,31,32);
+
+  // If the main cell has no data and none of the neighbour has data,
   // then do nothing.
-  if(bit0 == 0)
+  if(bit0 == 0 && bit31 == 0)
     return;
-  
+    
   // Retrieve the water depth of the main cell.
   CA_REAL  wdmain = caReadCellBuffReal(grid,WD,0);
 
   // Zeroed the value that are less then tolerance.
   wdmain = wdmain*caStepReal(wdmain,tol);
+
+  // If the bounday flag is not 1, the set the water depth of the
+  // main cell in the boundary to zero.
+  wdmain*=(bit0 || (boundary && bit31)); 
 
   // Update the wd.
   caWriteCellBuffReal(grid,WD,wdmain);  

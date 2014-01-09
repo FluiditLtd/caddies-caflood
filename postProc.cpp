@@ -235,7 +235,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	  }
 	  
 	  // Set the water depth to zero if it less than tollerance.
-	  CA::Execute::function(fulldomain, zeroedWD, GRID, WD, MASK, setup.rast_wd_tol);
+	  CA::State boundary = (setup.rast_boundary) ? 1 : 0;
+	  CA::Execute::function(fulldomain, zeroedWD, GRID, WD, MASK, setup.rast_wd_tol, boundary);
 	
 	  // Add the ID to remove.
 	  removeIDsCB.push_back(std::make_pair(setup.short_name+"_WD",strtime));
@@ -428,7 +429,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	}
 
 	// Set the water depth to zero if it less than tollerance.
-	CA::Execute::function(fulldomain, zeroedWD, GRID, WD, MASK, setup.rast_wd_tol);
+	CA::State boundary = (setup.rast_boundary) ? 1 : 0;
+	CA::Execute::function(fulldomain, zeroedWD, GRID, WD, MASK, setup.rast_wd_tol, boundary);
 
 	// Add the ID to remove.
 	removeIDsCB.push_back(std::make_pair(setup.short_name+"_WD","PEAK"));
