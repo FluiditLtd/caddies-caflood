@@ -444,6 +444,9 @@ int main(int argc, char* argv[])
     rgs.push_back(rg);    
   } 
 
+  // Variable that indicate that something was done.
+  bool work_done=false;
+
   //! Now perform the pre-processing
   if(ad.pre_proc)
   {
@@ -455,6 +458,8 @@ int main(int argc, char* argv[])
       std::cerr<<"Error while performing pre-processing"<<std::endl;
       return EXIT_FAILURE;    
     }
+
+    work_done = true;
 
     if(ad.info)
     {
@@ -476,6 +481,8 @@ int main(int argc, char* argv[])
       std::cerr<<"Error while performing CADDIES2D flood modelling"<<std::endl;
       return EXIT_FAILURE;    
     }
+
+    work_done = true;
     
     if(ad.info)
     {
@@ -496,11 +503,21 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;    
     }
 
+    work_done = true;
+
     if(ad.info)
     {
       std::cout<<std::endl;  
       std::cout<<"Ending post-processing data "<<std::endl;
     }
+  }
+
+  if(!work_done)
+  {
+    std::cout<<"/nATTENTION! No work was performed; missing specific options?"<<std::endl;
+    std::cout<<"Use the /help options to show help"<<std::endl;
+    std::cout<<"Press 'Return' to continue"<<std::endl;
+    return EXIT_FAILURE;    
   }
 
   // Close the caAPI.
