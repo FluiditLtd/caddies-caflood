@@ -487,8 +487,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   computeDT(dt,dtfrac,dtn1,setup);
 
   // Update the number of iteration before the next update dt.
-  iter_dt = dtfrac;
-
+  iter_dt = floor(setup.time_updatedt/dt + 0.5);  
 
   // -- PREPARE THE EVENTS MANAGERS WITH THE NEW DT ---
 
@@ -691,7 +690,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       computeDT(dt,dtfrac,dtn1,setup);
       
       // Update the number of iteration before the next update dt.
-      iter_dt = dtfrac;
+      iter_dt = floor(setup.time_updatedt/dt + 0.5);
 
       // When the dt need to be recomputed.
       time_dt += period_time_dt;
