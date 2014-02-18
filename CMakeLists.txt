@@ -59,6 +59,15 @@ file(STRINGS "Version.txt" CAAPI_APP_VERSION)
 # Show the version number
 message(STATUS "[${CAAPI_APP_NAME}]: Version ${CAAPI_APP_VERSION}")
 
+if (WIN32)
+  add_definitions( /DCAAPI_APP_VERSION=${CAAPI_APP_VERSION} )
+  add_definitions( /DCAAPI_APP_NAME=${CAAPI_APP_NAME} )
+else()
+  add_definitions( -DCAAPI_APP_VERSION=${CAAPI_APP_VERSION} )
+  add_definitions( -DCAAPI_APP_NAME=${CAAPI_APP_NAME} )
+endif()
+
+
 ########################## INFO  ##########################
 
 # Number of files

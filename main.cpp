@@ -42,6 +42,19 @@ THE SOFTWARE.
 #include"RasterGrid.hpp"
 
 
+//! Print the version info to std output.
+inline void version()
+{
+ std::cout<<"Copyright 2013 Centre for Water Systems, University of Exeter"<<std::endl;
+ std::cout<<"App                  : "<<CA_QUOTE_MACRO(CAAPI_APP_NAME)<<" ver. "<<CAAPI_APP_VERSION<<std::endl;
+ std::cout<<"CA API Version       : "<<caVersion<<std::endl;
+ std::cout<<"       Impl Name     : "<<caImplName<<std::endl;
+ std::cout<<"       Impl Short    : "<<caImplShortName<<std::endl;
+ std::cout<<"       Impl Version  : "<<caImplVersion<<std::endl;
+ std::cout<<"       Impl Precision: "<<caImplPrecision<<std::endl;
+}
+
+
 //! Perform the pre-processing using the given parameters (see pre_proc.cpp).
 //! \param[in] ad       The arguments data.
 //! \param[in] setup    The setup of the simulation.
@@ -100,6 +113,7 @@ int main(int argc, char* argv[])
   ad.args.add(na++,"output-dir",  "The output dir where output files are saved","",  false);
 
   // Add optional arguments.
+  ad.args.add(na++,"version",    "Show the version of the code.", "",  true, false, true);
   ad.args.add(na++,"help",      "Display the help and exit.", "",  true, false, true);
   ad.args.add(na++,"info",      "Print information about the configuration on console",  "",  true, false);
   ad.args.add(na++,"pre-proc",  "Perform the pre-processing of the data (only)",         "",  true, false);
@@ -147,6 +161,12 @@ int main(int argc, char* argv[])
       return -1;
     }
     
+    if((*i)->name == "version")
+    {
+      version();
+      return EXIT_SUCCESS;
+    }
+
     if((*i)->name == "info")
       ad.info = true;
 
@@ -167,12 +187,7 @@ int main(int argc, char* argv[])
   
   if(ad.info)
   {
-    std::cout<<"caflood 1.0"<<std::endl;
-    std::cout<<"CA API Version       : "<<caVersion<<std::endl;
-    std::cout<<"       Impl Name     : "<<caImplName<<std::endl;
-    std::cout<<"       Impl Short    : "<<caImplShortName<<std::endl;
-    std::cout<<"       Impl Version  : "<<caImplVersion<<std::endl;
-    std::cout<<"       Impl Precision: "<<caImplPrecision<<std::endl;
+    version();
     std::cout<<"Working Dir          : "<<ad.working_dir<<std::endl;
     std::cout<<"Setup File           : "<<ad.setup_file<<std::endl;
     std::cout<<"Output Dir           : "<<ad.output_dir<<std::endl;
