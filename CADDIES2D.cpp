@@ -42,12 +42,12 @@ THE SOFTWARE.
 
 // Base on:
 // CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-// C                                                                           C                
-// C     Paper name                                                            C
-// C     Authors                                                               C
-// C     Date                                                                  C
-// C     CA2D Version:1.0                                                      C
-// C                                                                           C 
+//                                                                                            
+// Paper name : CADDIES: A STREAMLINED, WEIGHTED CELLULAR AUTOMATA 2D 
+//              INUNDATION MODEL FOR RAPID FLOOD ANALYSIS 
+// Authors    : M. Guidolin, A. S. Chen, B. Ghimire, E. Keedwell, 
+//              S. Djordjević, D.A. Savić 
+//
 // CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
 
