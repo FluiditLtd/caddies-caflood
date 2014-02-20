@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
   // setup file of the given CA algorithm, and the directory where the
   // output data is saved. The setup file should be in the working
   // directory.
-  ad.args.add(na++,"working-dir", "The working dir which contain the setup file and the data","",  false);
+  ad.args.add(na++,"input-dir",   "The input dir which contain the setup file and the data","",  false);
   ad.args.add(na++,"setup-file",  "The setup file of the ca algorithm","",  false);
   ad.args.add(na++,"output-dir",  "The output dir where output files are saved","",  false);
 
@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
   // Cycle throught the arguments that were activated
   for(CA::Arguments::List::const_iterator i = ad.args.active().begin(); i != ad.args.active().end();  ++i)
   {
-    if((*i)->tag == 0)		// Working dir.
+    if((*i)->tag == 0)		// Input dir.
     {
       ad.working_dir = (*i)->value;
     }
@@ -188,7 +188,7 @@ int main(int argc, char* argv[])
   if(ad.info)
   {
     version();
-    std::cout<<"Working Dir          : "<<ad.working_dir<<std::endl;
+    std::cout<<"Input Dir            : "<<ad.working_dir<<std::endl;
     std::cout<<"Setup File           : "<<ad.setup_file<<std::endl;
     std::cout<<"Output Dir           : "<<ad.output_dir<<std::endl;
     std::cout<<"Data   Dir           : "<<ad.data_dir<<std::endl;
