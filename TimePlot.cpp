@@ -205,6 +205,8 @@ void TPManager::output(CA::Real t, CA::Unsigned iter, CA::CellBuffReal& WD, CA::
 	  (*_datas[i].file)<<std::endl;
 	}
 	break;
+      default:
+	break;
       }
 	
       // Update the next time to plot.
@@ -245,6 +247,8 @@ int TPManager::initData(const std::string& filename, const TimePlot& tp, Data& t
     {	
       (*tpdata.file)<<tp.pnames[p]<<", ";
     }
+    break;
+  default:
     break;
   }
   (*tpdata.file)<<std::endl;

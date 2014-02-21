@@ -387,6 +387,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    CA::writeAsciiGrid(agtmp1,filename);	      
 	  }
 	  break;
+	default:
+	  break;
 	}
 
 	// Update the next time to process a raster grid.
@@ -512,6 +514,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	  // Write the data.
 	  CA::writeAsciiGrid(agtmp1,filename);	      
 	}
+	break;
+      default:
 	break;
       }      
     }

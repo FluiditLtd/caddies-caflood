@@ -116,6 +116,8 @@ int initRGData(const std::string& filename, CA::Grid& GRID, double nodata, const
       rgpeak.WD->clear(0.0);
     }
     break;
+  default:
+    break;
   }
 
   if(rg.period > 0.0)
@@ -182,6 +184,8 @@ bool RGManager::updatePeak(const CA::BoxList&  domain,
 	  WDPEAKupdated = true;
 	}
 	break;
+      default:
+	break;
       }
     }
   }
@@ -240,6 +244,8 @@ bool RGManager::outputPeak(CA::Real t, CA::CellBuffReal& WD, CA::CellBuffReal& V
 	  _peak.WD->saveData(saveid+"_WD","PEAK");
 	  WDPEAKsaved = true;
 	}
+	break;
+      default:
 	break;
       }
       
@@ -315,6 +321,8 @@ bool RGManager::output(CA::Real t, CA::CellBuffReal& WD,
 	  WDsaved = true;
 	}
 	break;
+      default:
+	break;
       }
 	
       // Check if the peak values need to be saved.
@@ -345,6 +353,8 @@ bool RGManager::output(CA::Real t, CA::CellBuffReal& WD,
 	    _peak.WD->saveData(saveid+"_WD","PEAK");
 	    WDPEAKsaved = true;
 	  }
+	  break;
+	default:
 	  break;
 	}
 	  
@@ -383,6 +393,8 @@ int RGManager::initData(const std::string& filename, const RasterGrid& rg, Data&
       rgpeak.WD.reset( new CA::CellBuffReal(_grid) ); 
       rgpeak.WD->clear(0.0);
     }
+    break;
+  default:
     break;
   }
 

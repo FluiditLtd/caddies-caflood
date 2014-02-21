@@ -110,7 +110,7 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
   // fraction and stop as soon as the restuts is lower tha dtn1.
   if(dt<=dtn1)
   {
-    for(dtfrac; dtfrac>=1;dtfrac--)
+    for(; dtfrac>=1;dtfrac--)
     {
       CA::Real tmpdt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
       if(tmpdt>=dtn1)
@@ -126,7 +126,7 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
   }
   else
   {
-    for(dtfrac; dtfrac<=dtfracmax;dtfrac++)
+    for(; dtfrac<=dtfracmax;dtfrac++)
     {
       CA::Real tmpdt = setup.time_maxdt/static_cast<CA::Real>(dtfrac);
       if(tmpdt<=dtn1)
