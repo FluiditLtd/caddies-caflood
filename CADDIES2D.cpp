@@ -602,7 +602,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     
       // Check if the box alarm is active, that mean there is some
       // outflux on the border of the computational domain.
-      if(OUTFALARMS.isActivate(0))
+      if(OUTFALARMS.isActivated(0))
       {
 	// Set the computational domain to be the extend version and
 	// create the new extended one.
@@ -712,7 +712,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 	// threshold.
 	// ATTENTION This action is performed only when all the events
 	// finished to add water to the domain.
-	if(!VELALARMS.isActivate(0) && t > t_end_events)
+	if(!VELALARMS.isActivated(0) && t > t_end_events)
 	{
 	  CA::Execute::function(fulldomain, removeUpstr, GRID, MASK, ELV, upstr_elv);
 	  upstr_elv -= setup.upstream_reduction;
