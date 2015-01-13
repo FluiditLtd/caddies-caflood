@@ -57,6 +57,8 @@ struct IEvent
   std::vector<CA::Real> times;	//!< The times in seconds.
   std::vector<CA::Real> area;	//!< The area (tl,tr,bl,br) where the inflow will heppen in the border.
   std::vector<CA::Real> zone;	//!< The zone (x,y,w,h) where the inflow will heppen in the border.
+  CA::Real              u;	//!< Used to compute the Analytical solution.
+  CA::Real              n;	//!< Used to compute the Analytical solution.
 };
 
 

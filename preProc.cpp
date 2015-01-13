@@ -52,8 +52,8 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
   CA::Clock total_timer;
 
   // Check if pre-process data is already there
-  if( CA::Grid::exist(ad.data_dir,setup.short_name+"_Grid","0") &&
-      CA::CellBuffReal::existData(ad.data_dir,setup.short_name+"_ELV","0") )
+  if( CA::Grid::exist(ad.data_dir,setup.preproc_name+"_Grid","0") &&
+      CA::CellBuffReal::existData(ad.data_dir,setup.preproc_name+"_ELV","0") )
   {
 
     if(setup.output_console)
@@ -91,7 +91,7 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
     GRID.setDataDir(ad.data_dir);
     
     // Save the data of the Grid
-    if( !GRID.save(setup.short_name+"_Grid","0") )
+    if( !GRID.save(setup.preproc_name+"_Grid","0") )
     {
       std::cerr<<"Error while saving the GRID information"<<std::endl;
       return 1;
@@ -144,7 +144,7 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
     ELV.insertData(realbox, &eg.data[0], eg.ncols, eg.nrows);
     
     // Save the data of the Elevation
-    if( !ELV.saveData(setup.short_name+"_ELV","0") )
+    if( !ELV.saveData(setup.preproc_name+"_ELV","0") )
     {
       std::cerr<<"Error while saving the Elevation data"<<std::endl;
       return 1;

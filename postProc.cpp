@@ -84,7 +84,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
   // ATTENTION this should have an extra set of cells in each
   // direction.  The internal implementation could be different than a
   // square regular grid.
-  CA::Grid  GRID(ad.data_dir,setup.short_name+"_Grid","0", ad.args.active());
+  CA::Grid  GRID(ad.data_dir,setup.preproc_name+"_Grid","0", ad.args.active());
 
   if(setup.output_console)
     std::cout<<"Loaded Grid data"<< std::endl;
@@ -139,7 +139,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 
   // Load the data not from the DEM file but from the pre-processed
   // file.
-  if(!ELV.loadData(setup.short_name+"_ELV","0") )
+  if(!ELV.loadData(setup.preproc_name+"_ELV","0") )
   {
     std::cerr<<"Error while loading the Elevation pre-processed file"<<std::endl;
     return 1;
@@ -219,7 +219,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
     for(size_t i = 0; i<rgdatas.size(); ++i)
     {
       // Check if it is time to process raster grid!
-      if(t >= rgdatas[i].time_next)
+      // Or the final extend need to be processed
+      if(t >= rgdatas[i].time_next || (rgs[i].final && t==setup.time_end) )
       {
 	if(!WDloaded)
 	{
@@ -231,7 +232,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	  if(!WD.loadData(setup.short_name+"_WD",strtime) )
 	  {
 	    std::cerr<<"Missing water depth data: "<<strtime<<std::endl;
-	    return 1;
+	    continue;
 	  }
 	  
 	  // Set the water depth to zero if it less than tollerance.
@@ -271,15 +272,15 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    // Load the velocity data on TMP1.
 	    if(! TMP1.loadData(setup.short_name+"_V",strtime) )
 	    {
-	      std::cerr<<"Missing data to create file: "<<filenameV<<std::endl;
-	      return 1;
+	      std::cerr<<"Missing velocity data to create file: "<<filenameV<<std::endl;
+	      continue;
 	    }
 	    
 	    // Load the angle data on TMP2.
 	    if(! TMP2.loadData(setup.short_name+"_A",strtime) )
 	    {
-	      std::cerr<<"Missing data to create file: "<<filenameA<<std::endl;
-	      return 1;
+	      std::cerr<<"Missing angle data to create file: "<<filenameA<<std::endl;
+	      continue;
 	    }
 
 	    // Set the V and A to zero if water depth is less than tollerance.
@@ -296,15 +297,17 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 		std::cout<<"Write Raster Grid: "<<filenameV<<std::endl;
 	      
 	      // Create the CSV file
-	      std::ofstream file( filenameV.c_str() ); 
-	      
+	      //std::ofstream file( filenameV.c_str() ); 
+	      FILE* fout = fopen(filenameV.c_str(), "w");	      
+
 	      // Set  manipulators 
-	      file.setf(std::ios::fixed, std::ios::floatfield);
-	      file.precision(6); 
+	      //file.setf(std::ios::fixed, std::ios::floatfield);
+	      //file.precision(6); 
 	      
 	      // Write the header
-	      file<<"X, Y, Speed, Angle_RAD, Angle_DEG, Angle_QGIS"<<std::endl;
-	      
+	      //file<<"X, Y, Speed, Angle_RAD, Angle_DEG, Angle_QGIS"<<std::endl;
+	      fprintf(fout,"X, Y, Speed, Angle_RAD, Angle_DEG, Angle_QGIS\n");
+
 	      // Loop thourhg the grid points.
 	      for(CA::Unsigned j_reg=realbox.y(), j_mem=0; j_reg<realbox.h()+realbox.y(); ++j_reg, ++j_mem)
 	      {
@@ -325,12 +328,16 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 		  
 		  // Write the results if the veclocity is more than zero.
 		  if(V>0)
-		    file<<p.coo().x()<<","<<p.coo().y()<<","<<V<<","<<AR<<","<<AD<<","<<AQ<<","<<std::endl;
+		  {
+		    //file<<p.coo().x()<<","<<p.coo().y()<<","<<V<<","<<AR<<","<<AD<<","<<AQ<<","<<std::endl;
+		    fprintf(fout,"%.12f,%.12f,%.6f,%.6f,%.6f,%.6f,\n", p.coo().x(),p.coo().y(),V,AR,AD,AQ);
+		  }
 		}
 	      }        
 	      
 	      // Close the file.
-	      file.close();	      
+	      //file.close();	      
+	      fclose(fout);
 	    }
 	    // NOPE, simply output the rasters.
 	    else
@@ -339,8 +346,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 		std::cout<<"Write Raster Grid: "<<filenameV<<" "<<filenameA<<std::endl;
 	      
 	      // Write the  data.
-	      CA::writeAsciiGrid(agtmp1,filenameV);	      
-	      CA::writeAsciiGrid(agtmp2,filenameA);	      	  
+	      CA::writeAsciiGrid(agtmp1,filenameV,setup.rast_places);	      
+	      CA::writeAsciiGrid(agtmp2,filenameA,setup.rast_places);	      	  
 	    }
 	    
 	    // Add the ID to remove.
@@ -367,7 +374,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	      std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	    
 	    // Write the data.
-	    CA::writeAsciiGrid(agtmp1,filename);	      
+	    CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	      
 	  }
 	  break;
 	case PV::WD:
@@ -384,7 +391,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	      std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	    
 	    // Write the data.
-	    CA::writeAsciiGrid(agtmp1,filename);	      
+	    CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	      
 	  }
 	  break;
 	default:
@@ -400,10 +407,14 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 
     }
 
+    //Finish after t reach end
+    if(t == setup.time_end)
+      break;
+
     // Set the nearest important time as the enxt time and set the
     // possible nearest important time as the end of the simulation.
     t         = t_nearest;
-    t_nearest = setup.time_end+1;   
+    t_nearest = setup.time_end;   
   }
 
   // ----  PEAK RASTER GRID ----
@@ -427,7 +438,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	if(! WD.loadData(setup.short_name+"_WD","PEAK") )
 	{
 	  std::cerr<<"Missing water depth data: "<<"PEAK"<<std::endl;
-	  return 1;
+	  continue;
 	}
 
 	// Set the water depth to zero if it less than tollerance.
@@ -454,8 +465,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	  // Load the data on TMP1.
 	  if(! TMP1.loadData(setup.short_name+"_V","PEAK") )
 	  {
-	    std::cerr<<"Missing data to create file: "<<filenameV<<std::endl;
-	    return 1;
+	    std::cerr<<"Missing velocity data to create file: "<<filenameV<<std::endl;
+	    continue;
 	  }
 
 	  // Set the V and A to zero if water depth is less than tollerance.
@@ -468,7 +479,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    std::cout<<"Write Raster Grid: "<<filenameV<<std::endl;
 	  
 	  // Write the data.
-	  CA::writeAsciiGrid(agtmp1,filenameV);	      
+	  CA::writeAsciiGrid(agtmp1,filenameV,setup.rast_places);	      
 
 	  // Add the ID to remove.
 	  removeIDsCB.push_back(std::make_pair(setup.short_name+"_V","PEAK"));
@@ -494,7 +505,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	  
 	  // Write the data.
-	  CA::writeAsciiGrid(agtmp1,filename);	 
+	  CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	 
 	}
 	break;
 	
@@ -512,7 +523,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	  
 	  // Write the data.
-	  CA::writeAsciiGrid(agtmp1,filename);	      
+	  CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	      
 	}
 	break;
       default:
@@ -539,10 +550,10 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
   if(setup.remove_prec_data)
   {
     // Remove Elevation data.
-    CA::CellBuffReal::removeData(ad.data_dir,setup.short_name+"_ELV","0");
+    CA::CellBuffReal::removeData(ad.data_dir,setup.preproc_name+"_ELV","0");
     
     // Remove Grid data.
-    CA::Grid::remove(ad.data_dir,setup.short_name+"_Grid","0");
+    CA::Grid::remove(ad.data_dir,setup.preproc_name+"_Grid","0");
   }
 
   if(setup.output_console)

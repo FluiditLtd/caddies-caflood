@@ -55,6 +55,8 @@ struct WLEvent
   std::vector<CA::Real> times;	//!< The times in seconds.
   std::vector<CA::Real> area;	//!< The area where the water level will be set.  
   std::vector<CA::Real> zone;	//!< The zone (x,y,w,h) where the water level will heppen.
+  CA::Real              u;	//!< Used to compute the Analytical solution.
+  CA::Real              n;	//!< Used to compute the Analytical solution.
 };
 
 //! Initialise the water level event structure usign a CSV file. 

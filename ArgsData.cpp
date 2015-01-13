@@ -46,6 +46,17 @@ std::istream& operator>>(std::istream& in, MODEL::Type& m)
     m = MODEL::WCA2Dv1; 
     return in;
   }
+  if( CA::compareCaseInsensitive(tmp, "WCA2Dv2" ) )
+  {
+    m = MODEL::WCA2Dv2; 
+    return in;
+  }
+  if( CA::compareCaseInsensitive(tmp, "WCA2D" ) )
+  {
+    // The default one is WCA2Dv1 for the moment.
+    m = MODEL::WCA2Dv1; 
+    return in;
+  }
   m = MODEL::UNKNOWN;
   in.setstate(std::ios::failbit);
   return in;
@@ -117,12 +128,3 @@ std::ostream& operator<<(std::ostream& out, PV::Type& pv)
 }
 
 
-int initVELBuff(CA::Grid& GRID, double nodata, VELBuff& vb)
-{
-  vb.init = true;
-  vb.V.reset( new CA::CellBuffReal(GRID) ); 
-  vb.U.reset( new CA::CellBuffReal(GRID) ); 
-  vb.V->fill(GRID.box(),nodata);
-  vb.U->fill(GRID.box(),nodata);
-  return 0;
-}

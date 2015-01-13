@@ -57,6 +57,9 @@ int initRainEventFromCSV(const std::string& filename, RainEvent& re)
   // and retrieve the tokens of each line.
   while(!ifile.eof())
   {
+    // If true the token was identified;
+    bool found_tok = false;
+
     std::vector<std::string> tokens( CA::getLineTokens(ifile, ',') );
     
     // If the tokens vector is empty we reached the eof or an
@@ -67,17 +70,18 @@ int initRainEventFromCSV(const std::string& filename, RainEvent& re)
     if(CA::compareCaseInsensitive("Event Name",tokens[0],true))
     {
       std::string str;
-      READ_TOKEN(str,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
       
       re.name = CA::trimToken(str," \t\r");
     }
 
     if(CA::compareCaseInsensitive("Rain Intensity",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	re.rains.push_back(value);
       }
@@ -85,10 +89,11 @@ int initRainEventFromCSV(const std::string& filename, RainEvent& re)
 
     if(CA::compareCaseInsensitive("Time Stop",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	re.times.push_back(value);
       }
@@ -96,10 +101,11 @@ int initRainEventFromCSV(const std::string& filename, RainEvent& re)
 
     if(CA::compareCaseInsensitive("Area",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	re.area.push_back(value);
       }
@@ -107,13 +113,21 @@ int initRainEventFromCSV(const std::string& filename, RainEvent& re)
 
     if(CA::compareCaseInsensitive("Zone",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	re.zone.push_back(value);
       }
+    }
+
+    // If the token was not identified stop!
+    if(!found_tok)
+    {
+      std::cerr<<"Element '"<<CA::trimToken(tokens[0])<<"' not identified"<<std::endl; \
+      return 1;
     }
   }
 

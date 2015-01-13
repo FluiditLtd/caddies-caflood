@@ -1,0 +1,96 @@
+/*
+    
+Copyright (c) 2013 Centre for Water Systems,
+                   University of Exeter
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+*/
+
+// Compute the slope in percent of the central cell using the maximum rate of
+// change in value from that cell to its neighbors.
+
+// See http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?TopicName=How%20Slope%20works
+
+CA_FUNCTION computeSlope(CA_GRID grid, CA_CELLBUFF_REAL_IO SLP, CA_CELLBUFF_REAL_I ELV,CA_CELLBUFF_STATE_I MASK)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
+
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // If the main cell has no data,
+  // then do nothing.
+  if(bit0 == 0)
+    return;
+
+  // Create an array with the elevation values for each neighbourh cell.
+  CA_ARRAY_CREATE(grid, CA_REAL, GND,caNeighbours+1);
+
+  // Create an array with the mak values for each newighbour cell.
+  CA_ARRAY_CREATE(grid, CA_STATE, MA,caNeighbours+1);
+
+  // Create the array which will contain the angle between each cell
+  // and the main one.
+  CA_ARRAY_CREATE(grid, CA_REAL, ANGLE, caNeighbours+1);
+
+  // Read the elevation and the mask
+  caReadCellBuffRealCellArray(grid,ELV,GND);
+  caReadCellBuffStateCellArray(grid,MASK,MA);
+
+  // Read the angle of each cell.
+  caAngleCellArray(grid,ANGLE);
+
+  CA_REAL dx = 0.0;
+  CA_REAL dy = 0.0;
+  CA_REAL zx = 0.0;
+  CA_REAL zy = 0.0;
+
+  // Loop though the neighbour cell.
+  for(int k=1; k<=caNeighbours; ++k)
+  {
+    // Read bit 0  (false the cell has nodata)
+    bit0  = caReadBitsState(MA[k],0,1);
+  
+    // If the cell has nodata set the elevation to be the same of the
+    // main cell.
+    GND[k] = (bit0==0)?GND[0]:GND[k];
+
+    CA_REAL x = caDistance(grid,k)*caCosReal(ANGLE[k]);
+    CA_REAL y = caDistance(grid,k)*caSinReal(ANGLE[k]);
+
+    dx += caAbsReal(x);
+    dy += caAbsReal(y);
+
+    zx += caStepReal(caAbsReal(x),0.01)*caSignReal(x)*GND[k];
+    zy += caStepReal(caAbsReal(y),0.01)*caSignReal(y)*GND[k];
+  }
+	
+  // Compute Slope 
+  CA_REAL dzdx = zx/dx;
+  CA_REAL dzdy = zy/dy;
+  CA_REAL slope = caSqrtReal((dzdx*dzdx)+(dzdy*dzdy));
+
+  // Write the are in the buffer
+  caWriteCellBuffReal(grid,SLP,slope);
+}

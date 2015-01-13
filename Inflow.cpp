@@ -56,6 +56,10 @@ int initIEventFromCSV(const std::string& filename, IEvent& ie)
   // and retrieve the tokens of each line.
   while(!ifile.eof())
   {
+
+    // If true the token was identified;
+    bool found_tok = false;
+    
     std::vector<std::string> tokens( CA::getLineTokens(ifile, ',') );
     
     // If the tokens vector is empty we reached the eof or an
@@ -66,17 +70,18 @@ int initIEventFromCSV(const std::string& filename, IEvent& ie)
     if(CA::compareCaseInsensitive("Event Name",tokens[0],true))
     {
       std::string str;
-      READ_TOKEN(str,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
       
       ie.name = CA::trimToken(str," \t\r");
     }
 
     if(CA::compareCaseInsensitive("Inflow",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	ie.ins.push_back(value);
       }
@@ -84,10 +89,11 @@ int initIEventFromCSV(const std::string& filename, IEvent& ie)
 
     if(CA::compareCaseInsensitive("Time",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	ie.times.push_back(value);
       }
@@ -95,10 +101,11 @@ int initIEventFromCSV(const std::string& filename, IEvent& ie)
 
     if(CA::compareCaseInsensitive("Area",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	ie.area.push_back(value);
       }
@@ -106,13 +113,33 @@ int initIEventFromCSV(const std::string& filename, IEvent& ie)
 
     if(CA::compareCaseInsensitive("Zone",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	ie.zone.push_back(value);
       }
+    }
+
+    if(CA::compareCaseInsensitive("Analytical Solution U",tokens[0],true))
+    {
+      found_tok=true;
+      READ_TOKEN(found_tok,ie.u,tokens[1],tokens[0]);
+    }
+
+    if(CA::compareCaseInsensitive("Analytical Solution N",tokens[0],true))
+    {
+      found_tok=true;
+      READ_TOKEN(found_tok,ie.n,tokens[1],tokens[0]);
+    }
+
+    // If the token was not identified stop!
+    if(!found_tok)
+    {
+      std::cerr<<"Element '"<<CA::trimToken(tokens[0])<<"' not identified"<<std::endl; \
+      return 1;
     }
   }
   
@@ -223,6 +250,21 @@ void InflowManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real 
   // Loop through the inflow event(s).
   for(size_t i = 0; i<_ies.size(); ++i)
   {
+    // ANALYTICAl SOLUTION!
+    // If the value of U is set (differ from zero). Then the
+    // analytical solution is compute with C=0
+    if(_ies[i].u!=0)
+    {
+      CA::Real pn = std::pow(_ies[i].n,2);
+      CA::Real pu = std::pow(_ies[i].u,3);
+      CA::Real level_now  = std::pow((7.0/3.0)*(0-pn*pu*(-_ies[i].u*(t))) ,(3.0/7.0));
+      CA::Real level_prev  = std::pow((7.0/3.0)*(0-pn*pu*(-_ies[i].u*(t-dt))) ,(3.0/7.0));
+      CA::Real volume = _ies[i].u*((level_now+level_prev)/2)*_grid.length()*dt; // per cell!!!
+      
+      CA::Execute::function(_datas[i].box_area, addInflow, _grid, WD, MASK, volume);                 
+      continue;
+    }
+
     size_t index = _datas[i].index;
 
     // If the index is larger than the available ins/time, do

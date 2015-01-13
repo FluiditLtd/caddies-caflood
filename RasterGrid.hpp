@@ -47,6 +47,7 @@ struct RasterGrid
   std::string    name;		        //!< Name of the grid. 
   PV::Type       pv;		        //!< The physical variable.
   bool           peak;  		//!< If true, output the peak values of the physical variable. 
+  bool           final;  		//!< If true, output the final extend values of the physical variable. 
   CA::Real       period;		//!< The period in second.
 };
 
@@ -145,9 +146,10 @@ public:
   //! \params A          The cell buffer with the velocity angle.
   //! \params saveid     The id to use to save the buffers.
   //! \params output     If true, output information to console.
+  //! \param  final      If true, this is the final iteration.
   //! \return True if the rasters were outputed.
   bool output(CA::Real t, CA::CellBuffReal& WD, CA::CellBuffReal& V, CA::CellBuffReal& A,
-	      const std::string& saveid, bool output);
+	      const std::string& saveid, bool output, bool final = false);
   
 
 protected:

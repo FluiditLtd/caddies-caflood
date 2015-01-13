@@ -46,6 +46,8 @@ struct Setup
   std::vector<CA::Unsigned> sim_version; 
   std::string    sim_name;	//!< Name of the simulation. 
   std::string    short_name;	//!< Short name used as base for output files. 
+  std::string    preproc_name;	//!< Name used as base for the pre-processed files.
+  MODEL::Type    model_type;	//!< The model used in the simulation
 
   //  --- TIME VALUES  ---  
   CA::Real      time_start;	//!< Starting time of the simulation (seconds). 
@@ -57,9 +59,12 @@ struct Setup
   CA::Unsigned  time_maxiters;	//!< The maximum number of iterations. 
 
   //  --- SIMULATION PARAMETERS ---
-  CA::Real      roughness_global;  //!< Global default value.  
-  CA::Real      tolerance;	   //!< The water difference between cell that can be ignored.
-  CA::Real      ignore_wd;	   //!< The water depth that can be ignored.
+  CA::Real      roughness_global; //!< Global default value.  
+  CA::Real      infrate_global;   //!< Global default value (mm/hr).  
+  CA::Real      tolerance;	  //!< The water difference between cell that can be ignored.
+  CA::Real      ignore_wd;	  //!< The water depth that can be ignored.
+  CA::Real      tol_slope;	  //!< The slope difference (in %) between cell used to compute dt.
+
 
   //! The elevation of boundary cell, a high value represent a CLOSED
   //! boundary a low value represents an OPEN boundary.
@@ -103,7 +108,9 @@ struct Setup
   bool output_console;		//!< If true output info into console.
   CA::Real output_period;	//!< The period to ouput in seconds.
   bool output_computation;	//!< If true ouput computation time.
-  
+  bool terrain_info;		//!< If true print terrain info, like slope.
+  bool ts_plot;                 //!< If true create a file that plot the time step.
+
   //  --- CHEKS  ---
   bool check_vols;		//!< If true compute the various input/ouput volumes. 
 
@@ -115,14 +122,13 @@ struct Setup
   bool     rast_vel_as_vect;	//!< If true output the velocity raster as a vector field.  
   CA::Real rast_wd_tol;		//!< Ignore cell in raster that are lower than this tolerance.
   bool     rast_boundary;	//!< If true output the value of boundary cell. 
+  int      rast_places;		//!< The number of decimal places after the comma.
 
   // ---  PEAK UPDATE ---
   bool  update_peak_dt;	        //!< If true update the peak at every time step. Default false.
 
-  // --- EXPAND DOMAIN ---
-  bool expand_domain;		//!< If true expand the computational domain when needed.
-
-  // --- IGNORE UPSTREAM
+  // --- OPTIMISATIONS ---
+  bool     expand_domain;	//!< If true expand the computational domain when needed.
   bool     ignore_upstream;     //!< If true ignore upstream cells.
   CA::Real upstream_reduction;	//!< The amount of elevation to reduce
 };

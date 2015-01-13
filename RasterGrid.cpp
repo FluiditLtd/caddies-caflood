@@ -54,10 +54,18 @@ int initRasterGridFromCSV(const std::string& filename, RasterGrid& rg)
     return 1;
   }
   
+  rg.pv     = PV::UNKNOWN;
+  rg.peak   = false;
+  rg.final  = false;
+  rg.period = 0;
+
   // Parse the file line by line until the end of file 
   // and retrieve the tokens of each line.
   while(!ifile.eof())
   {
+    // If true the token was identified;
+    bool found_tok = false;
+
     std::vector<std::string> tokens( CA::getLineTokens(ifile, ',') );
     
     // If the tokens vector is empty we reached the eof or an
@@ -68,23 +76,35 @@ int initRasterGridFromCSV(const std::string& filename, RasterGrid& rg)
     if(CA::compareCaseInsensitive("Raster Grid Name",tokens[0],true))
     {
       std::string str;
-      READ_TOKEN(str,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
       
       rg.name = CA::trimToken(str);
     }
 
     if(CA::compareCaseInsensitive("Physical Variable",tokens[0],true))
-      READ_TOKEN(rg.pv,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,rg.pv,tokens[1],tokens[0]);
 
     if(CA::compareCaseInsensitive("Peak",tokens[0],true))
     {
       std::string str( CA::trimToken(tokens[1]) );
-      READ_TOKEN(rg.peak,str,tokens[0]);
+      READ_TOKEN(found_tok,rg.peak,str,tokens[0]);
+    }
+
+    if(CA::compareCaseInsensitive("Final",tokens[0],true))
+    {
+      std::string str( CA::trimToken(tokens[1]) );
+      READ_TOKEN(found_tok,rg.final,str,tokens[0]);
     }
 
     if(CA::compareCaseInsensitive("Period",tokens[0],true))
-      READ_TOKEN(rg.period,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,rg.period,tokens[1],tokens[0]);
 
+    // If the token was not identified stop!
+    if(!found_tok)
+    {
+      std::cerr<<"Element '"<<CA::trimToken(tokens[0])<<"' not identified"<<std::endl; \
+      return 1;
+    }
   }
 
   return 0;
@@ -264,7 +284,7 @@ bool RGManager::outputPeak(CA::Real t, CA::CellBuffReal& WD, CA::CellBuffReal& V
 bool RGManager::output(CA::Real t, CA::CellBuffReal& WD, 
 		       CA::CellBuffReal& V, CA::CellBuffReal& A, 
 		       const std::string& saveid,
-		       bool output)
+		       bool output, bool final)
 {
   // This variables is used to indicates if the output to console
   // happen in the case of time plot.
@@ -281,8 +301,8 @@ bool RGManager::output(CA::Real t, CA::CellBuffReal& WD,
   
   for(size_t i = 0; i<_datas.size(); ++i)
   {
-    // Check if it is time to plot!
-    if(t >= _datas[i].time_next)
+    // Check if it is time to plot or the output is forced!
+    if(t >= _datas[i].time_next || (final && _rgs[i].final))
     {	
       if(!outputed && output)
       {
@@ -367,7 +387,7 @@ bool RGManager::output(CA::Real t, CA::CellBuffReal& WD,
   if(outputed && output)
     std::cout<<std::endl;
 
-  return (WDPEAKsaved || VAPEAKsaved || WDsaved || VAsaved);
+  return (WDPEAKsaved || VAPEAKsaved);
 }
 
 

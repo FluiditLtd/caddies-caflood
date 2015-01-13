@@ -1,12 +1,49 @@
-### Overview Changes in caflood version ??? **(???)** ###
+### Overview Changes in caflood version 110 **(???)** ###
 
  1. Major features:
 
-  -
+  - A second model called WCA2Dv2 is implemented. This model improves
+    the accuracy of the results while keeping the same computational
+    performance of the previous model.  The time step is calculated
+    using the formula suggested by Hunters et all and it can be
+    influenced by the Slope tollerance parameter
+
+  - It is possible to choose in the setup file which model to run by
+    using the "Model Type" item.
+
+  - The previous model was re-named WCA2Dv1
+
+  - The water level event and the inflow event can modified to behave
+    like the analytical solution proposed by Hunters et all.
 
  2. Minor items:
 
+  - This version is derived from the internal revision ???
+
+  - A new command line argument was added 'terrain-info' to compute
+    only the information (Slope/Number of cells, etc.)
+
   - Updated the code to compile using clang 3.5 and gcc 4.8
+
+  - Updated the name of many CA functions.
+
+  - The command line argument 'WCA2D' was deprecated. Now we should
+    use the 'sim' argoment.
+
+  - A new command line argument was added 'terrain-info' which is used
+    to compute only the information of the terrain (Slope/Number of
+    cells, etc.).
+
+  - It is possible to choose in the setup file a pre/processing name
+    for a simulation. This can be usefull when multiple simulations
+    have the same pre/processing data like the terrain.
+
+  - It is possible to choose in the setup file to print the time steps
+    used during the simulation in a file.
+
+  - The application stops a Windows OS from sleeping when it is executed.
+
+  - The application does not wait a keyboard input before ending.
   
  3. Known missing features & problems:
 

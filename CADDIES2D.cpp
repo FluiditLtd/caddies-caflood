@@ -38,12 +38,14 @@ THE SOFTWARE.
 #include"WaterLevel.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"
+#include"TSPlot.hpp"
+#include<ctime>
 
 
-// Base on:
+// WCA2Dv2 model base on:
 // CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 //                                                                                            
-// Paper name : CADDIES: A STREAMLINED, WEIGHTED CELLULAR AUTOMATA 2D 
+// Paper name : A WEIGHTED CELLULAR AUTOMATA 2D 
 //              INUNDATION MODEL FOR RAPID FLOOD ANALYSIS 
 // Authors    : M. Guidolin, A. S. Chen, B. Ghimire, E. Keedwell, 
 //              S. Djordjević, D.A. Savić 
@@ -81,7 +83,7 @@ inline CA::Box extendBox(CA::Box extent, CA::Box& fullbox, CA::Unsigned lines)
 //! Output to console the information about the simulation.
 void outputConsole(CA::Unsigned iter, CA::Unsigned oiter, CA::Real t, CA::Real dt, 
 		   CA::Real avgodt, CA::Real minodt, CA::Real maxodt, 
-		   CA::Real vamax, CA::Real upstr_elv,
+		   CA::Real vamax, CA::Real upstr_elv, const CA::BoxList& domain,
 		   const Setup& setup)
 {
   std::cout<<"-----"<<std::endl;
@@ -91,7 +93,11 @@ void outputConsole(CA::Unsigned iter, CA::Unsigned oiter, CA::Real t, CA::Real d
 	   <<" Min DT = "<<minodt<<" Max DT = "<<maxodt<<std::endl;	
   std::cout<<"UPSTRELV = "<<upstr_elv<<std::endl;
   std::cout<<"VAMAX    = "<<vamax<<std::endl;    
-
+  if(setup.expand_domain)
+  {
+    CA::Box B(domain.extent());
+    std::cout<<"DOMAIN   = ("<<B.x()<<","<<B.y()<<"):("<<B.w()<<","<<B.h()<<")"<<std::endl;
+  }
   std::cout<<"-----"<<std::endl;
 
 }
@@ -152,19 +158,36 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 #include CA_2D_INCLUDE(updatePEAKE)
 
 
+
 int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
 	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
 	      const std::vector<IEvent>& ies, 
 	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
 {
 
-  if(setup.output_computation)
+    // Check the model.
+  switch(setup.model_type)
   {
+  case MODEL::WCA2Dv1 :
+  case MODEL::WCA2Dv2 :
+    // OK!
+    break;
+  default:
+    std::cerr<<"Error the simulation does not support the model: "<<setup.model_type<<std::endl;
+    return 1;
+  }
+
+  if(setup.output_console)
+  {
+    time_t t = time(0);   // get time now
+    struct tm * now = localtime( & t );
     std::cout<<"Simulation : "<<setup.sim_name<< std::endl;
-    std::cout<<"Model      : "<<ad.model<< std::endl;
+    std::cout<<"Model      : "<<setup.model_type<< std::endl;
+    std::cout<<"Date Start : "<<(now->tm_year + 1900)<<"-"<<(now->tm_mon + 1)<<'-'<<now->tm_mday
+	     <<" "<<now->tm_hour<<":"<<now->tm_min<<":"<<now->tm_sec << std::endl;
     std::cout<<"------------------------------------------" << std::endl; 
   }
-  
+
   // ----  Timer ----
   
   // Get starting time.
@@ -176,7 +199,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // ATTENTION this should have an extra set of cells in each
   // direction.  The internal implementation could be different than a
   // square regular grid.
-  CA::Grid  GRID(ad.data_dir,setup.short_name+"_Grid","0", ad.args.active());
+  CA::Grid  GRID(ad.data_dir,setup.preproc_name+"_Grid","0", ad.args.active());
 
   if(setup.output_console)
     std::cout<<"Loaded Grid data"<< std::endl;
@@ -221,6 +244,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // present and moving.
   CA::BoxList  compdomain;
   
+  // Create the computational domain used for sequential
+  // compuattaion. SequentialOp does not work with multiple boxes.
+  CA::BoxList  seqdomain(fullbox);
+
   // -- INITIALISE ELEVATION ---
   
   // Create the elevation cell buffer.
@@ -235,7 +262,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 
   // Load the data not from the DEM file but from the pre-processed
   // file.
-  if(!ELV.loadData(setup.short_name+"_ELV","0") )
+  if(!ELV.loadData(setup.preproc_name+"_ELV","0") )
   {
     std::cerr<<"Error while loading the Elevation pre-processed file"<<std::endl;
     return 1;
@@ -268,16 +295,37 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // Create the velocity cell buffer with the angle of the velocity
   CA::CellBuffReal A(GRID);
 
+  // If the we are using the WCA2Dv2 model create the buffer with the
+  // dt value.
+  cpp11::shared_ptr<CA::CellBuffReal> PDT; 
+
+  // Allocate the buffer for the time step
+  // Only WCA2Dv1 does not need this.
+  if(setup.model_type != MODEL::WCA2Dv1)
+  {
+    PDT.reset( new CA::CellBuffReal(GRID) );
+    (*PDT).fill(fulldomain, setup.time_updatedt);
+  }
 
   // ----  EDGES BUFFERS ----
 
-  // Create the outflow edge buffer.
-  CA::EdgeBuffReal OUTF(GRID);
+  // Create the outflow edge buffer(s). Many models uses a double buffer
+  // technique to save time.
+  CA::EdgeBuffReal OUTF1(GRID);
+  CA::EdgeBuffReal OUTF2(GRID);
 
-  // During the computation this store:
-  // WCA2Dv1 the total flow for  an edge for an update step.
-  CA::EdgeBuffReal TOT(GRID);
-  
+  CA::EdgeBuffReal *POUTF1 = &OUTF1;
+  CA::EdgeBuffReal *POUTF2 = &OUTF2;
+
+  // Allocate the buffer for total flow for  an edge for an update step.
+  // Only WCA2Dv1 does need this.
+  cpp11::shared_ptr<CA::EdgeBuffReal> PTOT; 
+  if(setup.model_type == MODEL::WCA2Dv1)
+  {
+    PTOT.reset( new CA::EdgeBuffReal(GRID) );
+    (*PTOT).clear();
+  }
+
 
   // ---- ALARMS ----
 
@@ -307,15 +355,25 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // The water difference between cell that can be ignored.
   CA::Real     tol_delwl = setup.tolerance;
 
-  // The minimum lelvel of water that is used for computing the
-  // velocity. This cannot be to small (less than a centimer)
-  CA::Real     tol_va    = std::max(setup.ignore_wd,static_cast<CA::Real>(0.01));
+  // The minimum level of water that is used for computing the
+  // velocity. 
+  CA::Real     tol_va    = std::min(setup.ignore_wd,static_cast<CA::Real>(0.001));
+
+  // The tollerance of the slope used to compute the dt. The slope
+  // between two points must be higher than this value.
+  // The tollerance is passed in percentile.
+  CA::Real     tol_slope = setup.tol_slope/100;
 
   // This is the period of when the velocity is computed.
   CA::Real     period_time_dt   = setup.time_updatedt;
   CA::Real     time_dt          = t + period_time_dt;          // The next simulation time when to update dt.
   CA::Unsigned iter_dt          = 0;			       // The number of iteration before next update dt.
 
+  // This is the time from the start of an update dt.
+  CA::Real     start_updatedt   = 0.0;
+  
+  // This is the previous update step dt.
+  CA::Real     previous_dt      = dt;
 
  // The fraction of time_maxdt second used to compute the next the dt
   CA::Unsigned dtfrac    = 1;		  
@@ -335,16 +393,18 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   CA::Real     rain_volume   = 0.0;
   CA::Real     inflow_volume = 0.0;
   CA::Real     wd_volume     = 0.0;
+  CA::Real     inf_volume    = 0.0;
 
   // Maximum velocity.
   CA::Real     vamax=0.0;
 
+  // Possible dt for WCA2Dv2 model. This is used to compute the
+  // possible dt create by an event and created by the outflow.
+  CA::Real     possible_dt;
+
   // Upstream elevation value. This value is the elevation where the
   // water "probably cannot reach anymore".
   CA::Real     upstr_elv = high_elv;
-
-  // The total number of cells.
-  CA::Real    total_cells = 0.0;
 
   // The potential velocity that an event has created. This should be
   // used to create muliple loop of FLUX calculation.
@@ -362,7 +422,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // Variable which indicates if the raster habe been saved in the lat
   // iteration.
   bool RGwritten     = false;
-  
+
+  // If true perform the infiltration step.
+  bool useInfiltration  = false;
 
   // -- CREATE FULL MASK ---
   
@@ -390,6 +452,21 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   CA::Execute::function(fulldomain, setBoundaryEle, GRID, ELV, MASK, setup.boundary_elv);
 
   //CA_DUMP_BUFF(ELV,0);  
+
+  // ----  INFILTRATION ----
+
+ // Check if the infiltration computation is needed.
+  useInfiltration = (setup.infrate_global>0);
+
+  if(setup.output_console)
+  {
+    std::cout<<"--------------------------------------------------------" << std::endl; 
+    if(useInfiltration)
+      std::cout<<"Infiltration computation     : yes"<< std::endl;
+    else
+      std::cout<<"Infiltration computation     : no"<< std::endl;
+    std::cout<<"--------------------------------------------------------" << std::endl; 
+  }
 
   // ----  INIT WATER LEVEL EVENT  ----
 
@@ -455,11 +532,16 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     initRGData(filename, GRID, nodata, rgs[i], rgdatas[i], rgpeak);
   }
  
+  // Time Step plot manager
+  TSPlot tsplot(basefilename+"_ts.csv",setup.ts_plot);
+    
   // -- INITIALISE  ---
 
-  // Clear the outflow buffer to zero (borders included).
-  OUTF.clear();
-  TOT.clear();
+  // Clear the outflow(s) buffer to zero (borders included).
+  OUTF1.clear();
+  OUTF2.clear();
+  A.clear();
+  V.clear();
 
   // Set the wather depth to be zero.
   WD.fill(fulldomain, 0.0);
@@ -470,6 +552,12 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     compdomain.clear();
     compdomain.add(fullbox);
   }
+  else
+  {
+    // Set the sequential domain to the compdomain.
+    seqdomain = compdomain;
+  }
+
 
   // -- CALCULATE POSSIBLE INITIAL DT ---
 
@@ -479,9 +567,18 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   potential_va = std::max( potential_va, inflow_manager.potentialVA(t,period_time_dt) );
   potential_va = std::max( potential_va, wl_manager    .potentialVA(t,period_time_dt) );
 
-  // Compute the possible next time step using the critical velocity equations.
-  dtn1 = std::min(setup.time_maxdt,alpha*GRID.length()/potential_va);
-  
+  switch(setup.model_type)
+  {
+  case MODEL::WCA2Dv1:
+  case MODEL::WCA2Dv2:
+    // Compute the possible next time step using the critical velocity equations.
+    // Use the smaller between dx/dy
+    // I Don't like using alpha. But at the moment this is the
+    // simplest way to find the potential inpact of events.
+    dtn1 = std::min(setup.time_maxdt,alpha*GRID.length()/potential_va);    
+    break;
+  }    
+
   // Compute the next time step as a fraction fo the period time step.
   // Check that dt is between  min max.
   computeDT(dt,dtfrac,dtn1,setup);
@@ -504,10 +601,22 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   t_end_events = std::max(t_end_events, inflow_manager.endTime());
   t_end_events = std::max(t_end_events, wl_manager.endTime());
 
-  if(setup.output_computation)
+  if(setup.output_console)
   {
     std::cout<<"The events will end at "<<t_end_events<<" (s) simulation time"<< std::endl;
     std::cout<<"------------------------------------------" << std::endl; 
+  }
+
+  if(setup.output_console && setup.output_computation)
+  {
+    std::cout<<"-----------------" << std::endl; 
+    std::cout<<"Initialisation time taken (s) = " << total_timer.millisecond()/1000.0 << std::endl;
+    std::cout<<"-----------------" << std::endl;     
+  }
+  if(setup.output_console)
+  {
+    std::cout<<"Start main loop" << std::endl;
+    std::cout<<"-----------------" << std::endl; 
   }
 
   // ------------------------- MAIN LOOP -------------------------------
@@ -533,7 +642,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     // Check if it is time to output to console.
     if(setup.output_console && t>= time_output)
     {
-      outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,upstr_elv,setup);
+      outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,upstr_elv,compdomain,setup);
 
       oiter  = 0;
       avgodt = 0.0;
@@ -550,12 +659,13 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 	WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
 	wd_volume *= GRID.length()*GRID.length();
 
-	std::cout<<"Volume RAIN = "<<rain_volume<<" Volume INFLOW = "<<inflow_volume
-		 <<" Volume WD = "<<wd_volume<<std::endl;	
+	std::cout<<"Volume check:"<<std::endl;
+	std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
+		 <<" WD = "<<wd_volume<<std::endl;	
 	std::cout<<"-----------------" << std::endl; 
       }
 
-      if(setup.output_computation)
+      if(setup.output_console && setup.output_computation)
       {
 	std::cout<<"Partial run time taken (s) = " << total_timer.millisecond()/1000.0 << std::endl;
 	std::cout<<"-----------------" << std::endl; 
@@ -586,13 +696,26 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 
     // --- COMPUTE OUTFLUX ---
 
-    // Clear the outflow buffer to zero (borders included).
-    OUTF.clear();
-          
-    // Compute outflow using WCA2Dv1.
-    // Check if there is an outflow in the border of the box.
-    CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF, ELV, WD, MASK, OUTFALARMS,
-			  ignore_wd, tol_delwl,dt, irough);
+    switch(setup.model_type)
+    {
+    case MODEL::WCA2Dv1:
+      // Clear the outflow buffer to zero (borders included).
+      OUTF1.clear();
+      
+      // Compute outflow using WCA2Dv1.
+      // Check if there is an outflow in the border of the box.
+      CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF1, ELV, WD, MASK, OUTFALARMS,
+			    ignore_wd, tol_delwl,dt, irough);
+
+      break;
+    case MODEL::WCA2Dv2:
+      // Compute outflow using WCA2Dv2.
+      // This save a division operation for each cell.
+      CA::Real ratio_dt = dt/previous_dt; 
+      CA::State expand = setup.expand_domain;
+      //CA::Execute::function(compdomain, outflowWCA2Dv2, );       
+      break;
+    }
 
     // If there is a request to expand the domain.
     // Get the alarms states.
@@ -614,9 +737,21 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     
     // --- UPDATE WL AND WD  ---
     
-    // Update the water depth with the outflux and store the total
-    // amount of outflux for the WCA2Dv1 model. 
-    CA::Execute::function(compdomain, waterdepthWCA2Dv1, GRID, WD, OUTF, TOT, MASK, dt, period_time_dt);
+    switch(setup.model_type)
+    {
+    case MODEL::WCA2Dv1:
+      // Update the water depth with the outflux and store the total
+      // amount of outflux for the WCA2Dv1 model. 
+      CA::Execute::function(compdomain, waterdepthWCA2Dv1, GRID, WD, OUTF1, (*PTOT), MASK, dt, period_time_dt);
+      break;
+    case MODEL::WCA2Dv2:
+      // Swap the double buffer
+      // Now POUTF1 is zeroed while POUTF2 contains the previous flux.
+      std::swap(POUTF1,POUTF2);
+      break;
+    }
+
+    start_updatedt+=dt;
 
     // --- EXTRA LATERAL EVENT(s) ---
 
@@ -631,11 +766,14 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 
     // --- COMPUTE NEXT DT, I.E. PERIOD STEP ---
     
+    // Update previous dt
+    previous_dt = dt;
+
     // Check if the dt need to be re-computed.
     if(t>=time_dt || --iter_dt==0)
     {   
-      // Clear the Velocity
-      V.clear();
+      // Reset the start of updatedt.
+      start_updatedt = 0.0;
 
       if(setup.ignore_upstream)
       {
@@ -648,6 +786,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // Lets make sure there are not any rounding errors.
       t = time_dt;
 
+      // Plot the time steps if requested.
+      tsplot.output(t,dt);
+
       // The peak value need to be updated
       UpdatePEAK = true;
 
@@ -657,16 +798,29 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // NO water level at the moment.
 
       // --- UPDATE VA  ---
-      
-      // Compute the velocity using the total outflux.
-      // Attention the tollerance is different here. 
-      // Check if there is water movement over the upstream elevation threshould.
-      CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, TOT, MASK, VELALARMS,
-			    tol_va, period_time_dt, irough, upstr_elv);
 
-      // CLear the total outflux.
-      TOT.clear();
-                  
+      switch(setup.model_type)
+      {
+      case MODEL::WCA2Dv1:
+
+	// Clear the Velocity and angle.
+	V.clear();
+	A.clear();
+	
+	// Compute the velocity using the total outflux.
+	// Attention the tollerance is different here. 
+	// Check if there is water movement over the upstream elevation threshould.
+	CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, (*PTOT), MASK, VELALARMS,
+			      tol_va, period_time_dt, irough, upstr_elv);
+	
+	// CLear the total outflux.
+	(*PTOT).clear();
+	break;
+
+      case MODEL::WCA2Dv2:
+	break;
+      }
+
       // Retrieve the maximum velocity 
       V.sequentialOp(compdomain, vamax,CA::Seq::MaxAbs);                
 
@@ -679,11 +833,45 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       potential_va = std::max(potential_va, inflow_manager.potentialVA(t,period_time_dt) );
       potential_va = std::max(potential_va, wl_manager    .potentialVA(t,period_time_dt) );
 
-      // Compute the possible next dt from the grid velocity and from
-      // the potential velocity fron an event.
-      dtn1 = setup.time_maxdt;
-      dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
-      dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
+      switch(setup.model_type)
+      {
+      case MODEL::WCA2Dv1:
+	//case MODEL::WCA2Dv2:
+	// Compute the possible next dt from the grid velocity and from
+	// the potential velocity fron an event.
+	// Use the minimum between dx and dy.
+	dtn1 = setup.time_maxdt;     
+	dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
+	dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
+	break;
+
+      case MODEL::WCA2Dv2:
+
+	dtn1 = setup.time_maxdt;     
+	// Retrieve the possible dt using the WCA2Dv2 diffusive formula.
+	// This is very similar to the LISFLOOD-FP diffusive formula.
+	(*PDT).sequentialOp(seqdomain, possible_dt,CA::Seq::Min);                
+	
+	// I Don't like using alpha. But at the moment this is the
+	// simplest way to find the potential inpact of events.
+	dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
+
+	// Furthermore we are using alpha to keep a minimum time step
+	// depending on the velocity like in WCA2Dv1
+	dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
+
+	//std::cerr<<"@@ PDT = "<<possible_dt <<" NDT = "<<dtn1<<" ST = "<<t/60<<" @@"<<std::endl;
+
+	// Use the possible dt and the dtn1 to find the time step.
+	dtn1 = std::min(dtn1,possible_dt);		
+
+	// Reset the PDT.
+	//A.copy((*PDT)); 
+	(*PDT).fill(fulldomain, setup.time_updatedt);          
+	break;
+
+      }
+
             	     
       // Compute the next time step as a fraction fo the period time step.
       // Check that dt is between  min max.
@@ -720,7 +908,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       }
     } // COMPUTE NEXT DT.
 
-    // -------  OUTPUTS --------
+    // -------  OUTPUTS --------!!!!!!!!!!!!!!!
          
     // Output time plots.
     tp_manager.output(t, iter, WD, V, setup.output_console);
@@ -734,7 +922,8 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       rg_manager.updatePeak(compdomain,WD,V,MASK);
 
     // Output raster grid. Keep track if the raster have been written.
-    RGwritten = rg_manager.output(t, WD, V, A, setup.short_name, setup.output_console);
+    RGwritten = rg_manager.output(t, WD, V, A, setup.short_name, setup.output_console,
+				  (iter>=setup.time_maxiters-1 || t>=setup.time_end));
 	      
     // ---- END OF ITERATION ----
 
@@ -745,14 +934,16 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 
   // --- END OF MAIN LOOP ---
 
-  // --- OUTPUT PEAK ---
+  // --- OUTPUT PEAK & FINAL ---
   
   // Check if the raster have not been written in the last
-  // iteration. If not, we need to make sure that we save the PEAK.
+  // iteration. If not, we need to make sure that we save the PEAK and
+  // the FINAL extend (if requested).
   if(!RGwritten)
   {
     // Make sure to output the last peack value.  
     rg_manager.updatePeak(compdomain,WD,V,MASK);
+    rg_manager.output(t, WD, V, A, setup.short_name, setup.output_console, true);
     rg_manager.outputPeak(t,WD, V, setup.short_name, setup.output_console);
   }
 
@@ -761,7 +952,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // Check if it is time to output to console.
   if(setup.output_console && t>= time_output)
   {    
-    outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,upstr_elv,setup);
+    outputConsole(iter,oiter,t,dt,avgodt,minodt,maxodt,vamax,upstr_elv,compdomain,setup);
 
     if(setup.check_vols == true)
     {
@@ -769,22 +960,33 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // depth (included the boundary cell).
       WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
       wd_volume *= GRID.length()*GRID.length();
-      
-      std::cout<<"Volume RAIN = "<<rain_volume<<" Volume INFLOW = "<<inflow_volume
-	       <<" Volume WD = "<<wd_volume<<std::endl;	
-      std::cout<<"-----------------" << std::endl;       
+
+      std::cout<<"Volume check:"<<std::endl;
+      std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
+	       <<" WD = "<<wd_volume<<std::endl;	      
+      std::cout<<"-----------------" << std::endl;  
     }
   }
 
   // ---- TIME OUTPUT ----
 
-  if(setup.output_computation)
+  if(setup.output_console && setup.output_computation)
   {
     std::cout<<"-----------------" << std::endl; 
     std::cout<<"Total run time taken (s) = " << total_timer.millisecond()/1000.0 << std::endl;
     std::cout<<"-----------------" << std::endl; 
   }
 
+   if(setup.output_console)
+  {
+    time_t t = time(0);   // get time now
+    struct tm * now = localtime( & t );
+    std::cout<<"Simulation : "<<setup.sim_name<< std::endl;
+    std::cout<<"Model      : "<<setup.model_type<< std::endl;
+    std::cout<<"Date End   : "<<(now->tm_year + 1900)<<"-"<<(now->tm_mon + 1)<<'-'<<now->tm_mday
+	     <<" "<<now->tm_hour<<":"<<now->tm_min<<":"<<now->tm_sec << std::endl;
+    std::cout<<"------------------------------------------" << std::endl; 
+  }
   
   return 0;
 }

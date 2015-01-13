@@ -54,6 +54,9 @@ int initTimePlotFromCSV(const std::string& filename, TimePlot& tp)
   // and retrieve the tokens of each line.
   while(!ifile.eof())
   {
+    // If true the token was identified;
+    bool found_tok = false;
+
     std::vector<std::string> tokens( CA::getLineTokens(ifile, ',') );
     
     // If the tokens vector is empty we reached the eof or an
@@ -64,20 +67,21 @@ int initTimePlotFromCSV(const std::string& filename, TimePlot& tp)
     if(CA::compareCaseInsensitive("Time Plot Name",tokens[0],true))
     {
       std::string str;
-      READ_TOKEN(str,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
       
       tp.name = CA::trimToken(str);
     }
 
     if(CA::compareCaseInsensitive("Physical Variable",tokens[0],true))
-      READ_TOKEN(tp.pv,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,tp.pv,tokens[1],tokens[0]);
 
     if(CA::compareCaseInsensitive("Points Name",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	std::string str;
-	READ_TOKEN(str,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,str,tokens[i],tokens[0]);
 
 	tp.pnames.push_back(CA::trimToken(str));
       }
@@ -85,10 +89,11 @@ int initTimePlotFromCSV(const std::string& filename, TimePlot& tp)
 
     if(CA::compareCaseInsensitive("Points X Coo",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	tp.xcoos.push_back(value);
       }
@@ -96,18 +101,25 @@ int initTimePlotFromCSV(const std::string& filename, TimePlot& tp)
 
     if(CA::compareCaseInsensitive("Points Y Coo",tokens[0],true))
     {
+      found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
       {
 	CA::Real value;
-	READ_TOKEN(value,tokens[i],tokens[0]);
+	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	tp.ycoos.push_back(value);
       }
     }
     
     if(CA::compareCaseInsensitive("Period",tokens[0],true))
-      READ_TOKEN(tp.period,tokens[1],tokens[0]);
+      READ_TOKEN(found_tok,tp.period,tokens[1],tokens[0]);
 
+    // If the token was not identified stop!
+    if(!found_tok)
+    {
+      std::cerr<<"Element '"<<CA::trimToken(tokens[0])<<"' not identified"<<std::endl; \
+      return 1;
+    }
   }
 
   return 0;

@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 
 //! \file ArgsData.hpp
-//!  Contains the structure with the aruments data.
+//!  Contains the structure with the arguments data.
 //! \author Michele Guidolin, University of Exeter, 
 //! contact: m.guidolin [at] exeter.ac.uk
 //! \date 2013-03
@@ -39,12 +39,15 @@ THE SOFTWARE.
 #include<string>
 #include<vector>
 
-#define READ_TOKEN(_var,_tok,_sect)					\
-  if(!CA::fromString(_var,_tok))					\
-  {									\
-    std::cerr<<"Error reading '"<<CA::trimToken(_sect)<<"' element"<<std::endl; \
-    return 1;								\
-  }
+#define READ_TOKEN(_test,_var,_tok,_sect)				\
+   {									\
+   if(!CA::fromString(_var,_tok))					\
+   {									\
+     std::cerr<<"Error reading '"<<CA::trimToken(_sect)<<"' element"<<std::endl; \
+     return 1;								\
+   }									\
+   _test = true;							\
+   }
 
 
 //! Remove file extension
@@ -62,6 +65,7 @@ struct MODEL
   {
     UNKNOWN = 0,
     WCA2Dv1,
+    WCA2Dv2
   };
 };
 
@@ -105,11 +109,18 @@ struct ArgsData
   //! If true, perform preprocessing.
   bool pre_proc;		
 
+  //! If true, do not perform the preprocessing. This take precedence
+  //! over pre-proc argument.
+  bool no_pre_proc;
+
   //! If true, perform postprocessing.
   bool post_proc;
 
-  //! Which Model.
-  MODEL::Type model;
+  //! Which Model (is a string).
+  std::string model;
+
+  //! If true, display the terrrain info and exit.
+  bool terrain_info;
 
   // Constructor
   ArgsData():
@@ -127,8 +138,10 @@ struct ArgsData
     data_dir(),
     info(false),
     pre_proc(false),
+    no_pre_proc(false),
     post_proc(false),
-    model(MODEL::UNKNOWN)
+    model(),
+    terrain_info(false)
   {}
   
   ~ArgsData(){}
@@ -152,31 +165,6 @@ struct PV
 std::istream& operator>>(std::istream& in,  PV::Type& pv);
 //! Transform a physical variable enum into an output string.
 std::ostream& operator<<(std::ostream& out, PV::Type& pv);
-
-
-//! The structure contains two temporary CellBuffer of the
-//! velocity used to compute horizontal and vertical one.
-struct VELBuff
-{
-  bool init;
-
-  cpp11::shared_ptr<CA::CellBuffReal> V;//!< Vertical velocities cell buffer.
-  cpp11::shared_ptr<CA::CellBuffReal> U;//!< Horizontal velocities cell buffer.
-
-  CA::Real tupdated;		//!< The last time the buffer has been updated. 
-
-  VELBuff():
-    init(false),V(),U(), tupdated(0)
-  {}
-
-  ~VELBuff()
-  {}
-};
-
-
-//! Initialise the temporary velocity cell buffer.
-//! \return A non zero value if there was an error.
-int initVELBuff(CA::Grid& GRID, double nodata, VELBuff& vb);
 
 
 #endif
