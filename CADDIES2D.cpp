@@ -475,7 +475,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     {
       std::cout<<"Infiltration computation     : yes"<< std::endl;
       std::cout<<"Amount during an update step : "<< inf_updatedt<<std::endl;
-      std::cout<<"Attention                    : Beta code"<<std::endl;
+      std::cout<<"Attention                    : Beta code" <<std::endl;
     }
     else
       std::cout<<"Infiltration computation     : no"<< std::endl;

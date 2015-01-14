@@ -1,0 +1,223 @@
+/*
+    
+Copyright (c) 2013 Centre for Water Systems,
+                   University of Exeter
+
+This file is part of cafloodpro.
+
+cafloodpro is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+// Compute the outflow from the water depth using WCA2Dv2 model
+// This version compute the manning equation and the critical flow
+// using the water depth to find the maximum flow.  This maximum flow
+// is considered as maximum flow allowed in the direction of maximum
+// difference in water volume. Thus the maximum flow is used to limit
+// the total outflow from the cells.
+
+// This version store the total amount of flux in m^3 passed through the edge.
+
+// This version check if there is an outflow when the cell
+// is in the border of the box and set an alarm.
+
+// This version differ from WCA2Dv1 since it uses the total outflow
+// passing through the edge on the previous step to compute the
+// 'inertial' outflow which is added to the volume of water that can
+// be moved in this time step.
+
+// ATTENTION, This version uses the inverse roughness 
+
+CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_REAL_I OUTF2,
+			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I WD, 
+			   CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS, 
+			   CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
+			   CA_GLOB_REAL_I dt, CA_GLOB_REAL_I ratio_dt, CA_GLOB_REAL_I irough)
+{					       
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
+
+  // Retrieve the water depth of the main cell.
+  CA_REAL  wdmain = caReadCellBuffReal(grid,WD,0);
+  
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // If the main cell has no data (bit0 is false ) or there is no
+  // water do not compute the cell.
+  if(!(bit0 == 0 ||  wdmain < ignore_wd))
+  {
+    // Create an array which will contain various water values during the
+    // computation for each neighbourh cell, in the following order:
+    // 1) WATER depth
+    // 2) WATER level
+    // 3) WATER difference with main cell.
+    CA_ARRAY_CREATE(grid, CA_REAL, WATER,caNeighbours+1);
+  
+    // Create an array wich will contain vairous weight value during the
+    // computation for each eighbour cell, in the follwoing order:
+    // 1) Elevation
+    // 2) 'Diffusive' Weight.
+    // Attention, for the majority of the code whe we talk about weight
+    // we mainly inted the numerator of the weight fraction.
+    CA_ARRAY_CREATE(grid, CA_REAL, WEIGHT, caNeighbours+1);  
+
+    // Create the array which will contain the previous step water
+    // fluxes on the edges.
+    CA_ARRAY_CREATE(grid, CA_REAL, PFLUXES, caEdges+1);
+
+    // Read the water depth of the neighbourhood cells (store temporarily into WATER).
+    caReadCellBuffRealCellArray(grid,WD,WATER);
+
+    // Read the elevation of the neighbourhood cells, (stored temporarly in WEIGHT).
+    caReadCellBuffRealCellArray(grid,ELV,WEIGHT);
+
+    // Read the previous fluxes of the main cell.
+    caReadEdgeBuffRealEdgeArray(grid, OUTF2,0, PFLUXES);
+    
+    // The minimum difference in water volume This is set as maximum as
+    // starting value and re-check for each positive difference
+    CA_REAL mindelwv = 10000.0;  
+
+    // The total weight
+    CA_REAL totalw = 0.0;
+
+    // The total inertial volume
+    CA_REAL totalinw = 0.0;
+
+    // Store the values needed of the neighbour cell with maximum weight.
+    CA_REAL weight_max = 0.0;
+    int     edge_max   = 0;
+  
+    // Compute the water level of the cells since WATER and WEIGHT
+    // contein respectively the water detph and elevation.
+#pragma unroll
+    for(int k=0; k<=caNeighbours; ++k)
+      WATER[k]+=WEIGHT[k];    
+
+    // Compute the difference in water level (wich cannot be more than
+    // the water available on the cell). This will be store in WLA;
+    // WATER contains delwl
+#pragma unroll
+    for(int k=1; k<=caNeighbours; ++k)
+      WATER[k]=caMinReal(WATER[0] - WATER[k], wdmain);      
+
+    // Find the difference in water level / water volume between the
+    // main cell and each neighbour cell in order to compute the weight.
+    for(int k=1; k<=caNeighbours; ++k)
+    {   
+      // Change that each outflux is
+      // positive and each influx is negative.  
+      if(k<=caUpdateEdges(grid))
+	PFLUXES[k] = PFLUXES[k];
+      else
+	PFLUXES[k] = -PFLUXES[k];
+
+      WEIGHT[k] = 0.0;
+
+      // If the difference in water level is higher tha a tolerance, then
+      // the neighbour cell is downstream. Upstream cell are ignored.
+      if(WATER[k]>tol_delwl)
+      {
+	// Compute the difference in water volume (WEIGHT contains delwv).
+	WEIGHT[k]= WATER[k] * caArea(grid,k);
+
+	// Get the minimum difference in water volume of the downstreams cell.
+	mindelwv = caMinReal(mindelwv, WEIGHT[k]);      
+      }
+
+      // Add the positive outflow to the total inertial outflow
+      // volume.  This is retrieved by the previous fluxes during an
+      //  averaged to this dt.
+      totalinw += (PFLUXES[k]>0 && WEIGHT[k]>0)?(PFLUXES[k])*ratio_dt:0.0;
+      //totalinw += (PFLUXES[k]>0 )?(PFLUXES[k])*ratio_dt:0.0;
+
+      // The 'diffusive' weight is the water volume difference.   
+      totalw   += WEIGHT[k]; 
+
+      // Check if this is the maximum weight and eventual save the
+      // values.
+      if(WEIGHT[k]>weight_max)
+      {
+	weight_max = WEIGHT[k];
+	edge_max   = k;
+      }
+
+    }
+
+    // At this point if the total weight is zero, then all
+    // the other cell have higher water level or there is too small
+    // difference. Thus there is not outflow. Skip this cell
+    if(!(totalw<=0.0))
+    {
+
+    // Now we have to compute the weight of the main cell. This is the
+    // minimum differenc in water volume. We add this weight to the total weight.
+    totalw += mindelwv;  
+
+    // Retrieve the maximum values
+    CA_REAL delwl_max  = WATER[edge_max]; 
+    CA_REAL dx_max     = caLength(grid,0,edge_max);
+    CA_REAL dist_max   = caDistance(grid,edge_max);
+
+    // Compute the maximum velocity using Mannign equation and
+    // critical velocity. The maximum velocity allowed is 20 m/s
+    CA_REAL max_vh  = caMinReal(20.0, caFlowVelocity(irough,delwl_max/dist_max,wdmain,wdmain));
+
+    // Compute maximum flux using maximum veocity and the data from the
+    // cell with maximum weight.
+    CA_REAL max_flux = max_vh * wdmain * dt * dx_max;  
+
+    // Compute the total amount of output water volume that we can move
+    // from the main cell. This is the minimum between.
+    // 1) the minimum difference of water level of the  neighbourhood ...
+    //    ... plust the previous outflow.
+    // 2) the water level in the cell.
+    // 3) the total flux available depending on the maximum flux.
+    CA_REAL outwv = caMinReal(caMinReal(mindelwv+totalinw,max_flux*(totalw/weight_max)), 
+			      wdmain*caArea(grid,0));
+  
+    // Compute volume outflow from the main cell using the eventual
+    // positive weight.
+    for(int k=1; k<=caNeighbours; ++k)
+    {
+      // Consider only the downstream cell, i.e. positive weight.
+      if(WEIGHT[k]>0.0)
+      {
+	// Compute flux using the weight system 
+	CA_REAL flux = outwv*(WEIGHT[k]/totalw);
+      
+	// If the edge is one of the edges that can be updated without
+	// overwriting the buffer, the outflux is positive otherwise is
+	// negative.
+	if(k > caUpdateEdges(grid))
+	  flux=-flux;
+
+	// Set flux into the edge buffer.
+	caWriteEdgeBuffReal(grid,OUTF1,k,flux);
+      }
+    }
+
+    // If the code reach here mean that there is an outflux.  Check if
+    // the cell is in the border of the box and if it is the case set an
+    // alarm.
+    if(caBoxStatus(grid)>0)
+      caActivateAlarm(grid, ALARMS,0);
+  
+    } // totalw zero
+  } // Now water or no data cell.
+  
+}

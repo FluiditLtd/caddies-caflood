@@ -1,0 +1,82 @@
+/*
+    
+Copyright (c) 2013 Centre for Water Systems,
+                   University of Exeter
+
+This file is part of cafloodpro.
+
+cafloodpro is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+// Update the water depth for 
+// OUTF1 constains the outflow of this step
+// OUTF2 constains the outflow to erase
+CA_FUNCTION waterdepth(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, 
+		       CA_EDGEBUFF_REAL_I OUTF1, CA_EDGEBUFF_REAL_IO OUTF2, 
+		       CA_CELLBUFF_STATE_I MASK, 
+		       CA_GLOB_REAL_I dt)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+  
+  // ERASE OUTF BUFFER 2
+  for(int k=1; k<=caUpdateEdges(grid); ++k)
+    caWriteEdgeBuffReal(grid,OUTF2,k,0.0);
+  
+  // Create the arrays which will contain the water fluxes on the
+  // edges.
+  CA_ARRAY_CREATE(grid, CA_REAL, FLUXES1, caEdges+1);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
+
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // Read bit 31 (true if the main cell is nodata in at least one
+  // neighbour has data)
+  CA_STATE bit31  = caReadBitsState(mask,31,32);
+
+  // If the main cell has no data and none of the neighbour has data,
+  // then do nothing.
+  if(bit0 == 0 && bit31 == 0)
+    return;
+
+  // Read the fluxes of the main cell.
+  caReadEdgeBuffRealEdgeArray(grid, OUTF1,0, FLUXES1);
+
+  // Retrive the current value of the water depth.
+  CA_REAL  wd  = caReadCellBuffReal(grid,WD,0);
+  
+  // Retrive the area of the main cell.
+  CA_REAL  area = caArea(grid,0);
+
+  CA_REAL outflux = 0.0;
+
+  // Loop through the edges.
+  for(int e=1; e<=caEdges; e++)
+  {
+    // If the edge is one of the edges that can be updated without
+    // overwriting the buffer, the outflux is positive otherwise is
+    // negative.
+    if(e<=caUpdateEdges(grid))
+      outflux += FLUXES1[e];
+    else
+      outflux -= FLUXES1[e];    
+  }
+  
+  // Remove the outflux volume from the next step of the water depth.
+  // Add the rain
+  caWriteCellBuffReal(grid,WD,wd-(outflux/area));
+}
