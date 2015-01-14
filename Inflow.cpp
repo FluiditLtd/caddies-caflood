@@ -44,6 +44,9 @@ THE SOFTWARE.
 
 int initIEventFromCSV(const std::string& filename, IEvent& ie)
 {
+  ie.u = 0.0;
+  ie.n = 0.01;
+
   std::ifstream ifile(filename.c_str());
   
   if(!ifile)

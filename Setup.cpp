@@ -42,7 +42,7 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
   setup.sim_name           ="Sim";
   setup.short_name         ="sim";
   setup.preproc_name       = "";
-  setup.model_type         = MODEL::WCA2Dv1; // default.
+  setup.model_type         = MODEL::WCA2Dv2; // default.
  
   setup.tolerance          = 0.001;
   setup.tol_slope          = 0.1;

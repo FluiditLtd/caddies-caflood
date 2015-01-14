@@ -246,7 +246,7 @@ int TPManager::initData(const std::string& filename, const TimePlot& tp, Data& t
   tpdata.file->precision(6); 
 
   // Write the header
-  (*tpdata.file)<<"Iter, Time (s), ";
+  (*tpdata.file)<<"Iter, Time (min), ";
 
   // Write point name.
   switch(tp.pv)

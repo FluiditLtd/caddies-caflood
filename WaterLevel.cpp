@@ -43,6 +43,9 @@ THE SOFTWARE.
 
 int initWLEventFromCSV(const std::string& filename, WLEvent& wle)
 {
+  wle.u = 0.0;
+  wle.n = 0.01;
+
   std::ifstream ifile(filename.c_str());
   
   if(!ifile)

@@ -537,14 +537,12 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     
   // -- INITIALISE  ---
 
-  // Clear the outflow(s) buffer to zero (borders included).
+  // Clear the buffer to zero (borders included).
   OUTF1.clear();
   OUTF2.clear();
   A.clear();
   V.clear();
-
-  // Set the wather depth to be zero.
-  WD.fill(fulldomain, 0.0);
+  WD.clear();
 
   // If there is not request to expand domain. Set the computtational and extend domain to full domain.
   if(!setup.expand_domain)

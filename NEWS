@@ -44,6 +44,9 @@
   - The application stops a Windows OS from sleeping when it is executed.
 
   - The application does not wait a keyboard input before ending.
+
+  - The header of the time plot was updated to have the correct unit
+    of measure for the time values, i.e. minutes.
   
  3. Known missing features & problems:
 
@@ -124,3 +127,5 @@
   - The 'Update DT' parameter cannot have any value over 60
     seconds. The value must be a multiple of 60, i.e 30,15.
 
+  - The header in the time plot file has the wrong unit of measure for
+    time value, seconds (s) instead of minutes (min)
