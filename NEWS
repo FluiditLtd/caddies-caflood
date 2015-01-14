@@ -13,8 +13,10 @@
 
   - The previous model was re-named WCA2Dv1
 
-  - The water level event and the inflow event can modified to behave
+  - The water level event and the inflow event can be modified to behave
     like the analytical solution proposed by Hunters et all.
+
+  - Added global infiltration. This is still in beta and need to be tested.
 
  2. Minor items:
 

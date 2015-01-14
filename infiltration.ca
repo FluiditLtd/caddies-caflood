@@ -1,0 +1,53 @@
+/*
+    
+Copyright (c) 2013 Centre for Water Systems,
+                   University of Exeter
+
+This file is part of cafloodpro.
+
+cafloodpro is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+// Update the water depth by removing the water
+// that infiltrate into the ground.
+// ATTENTION, This version add the volume extracted into a buffer
+CA_FUNCTION infiltration(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_STATE_I MASK, 
+			 CA_CELLBUFF_REAL_IO VOL,
+			 CA_GLOB_REAL_I inf)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
+    
+  // If the infiltration is zero, do nothing.
+  if(inf==0.0)
+    return;
+
+  // Retrive the current value of the water depth.
+  CA_REAL  wd  = caReadCellBuffReal(grid,WD,0);
+
+  // Retrive the area of the main cell.
+  CA_REAL  area = caArea(grid,0);
+
+  // Compute the amount of water to remove.  
+  CA_REAL  remove = caMinReal(wd,inf);
+  
+  // Update the water depth value with the removed amount.
+  caWriteCellBuffReal(grid,WD,wd-remove);
+
+  // Update the volume removed.
+  caWriteCellBuffReal(grid,VOL,remove*area);
+}

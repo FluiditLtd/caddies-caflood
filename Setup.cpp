@@ -44,6 +44,9 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
   setup.preproc_name       = "";
   setup.model_type         = MODEL::WCA2Dv2; // default.
  
+  setup.roughness_global   = 0.01;
+  setup.infrate_global     = 0.0;
+
   setup.tolerance          = 0.001;
   setup.tol_slope          = 0.1;
   setup.ignore_wd          = 0.001;

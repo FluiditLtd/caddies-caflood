@@ -531,6 +531,7 @@ int main(int argc, char* argv[])
       if(preProc(ad,setup,ele_file)!=0)
       {
 	std::cerr<<"Error while performing pre-processing"<<std::endl;
+	std::cerr<<"Possible cause is the output directory argument"<<std::endl;
 	return EXIT_FAILURE;    
       }
     

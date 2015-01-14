@@ -53,8 +53,8 @@ std::istream& operator>>(std::istream& in, MODEL::Type& m)
   }
   if( CA::compareCaseInsensitive(tmp, "WCA2D" ) )
   {
-    // The default one is WCA2Dv1 for the moment.
-    m = MODEL::WCA2Dv1; 
+    // The default one is WCA2Dv2
+    m = MODEL::WCA2Dv2; 
     return in;
   }
   m = MODEL::UNKNOWN;
@@ -70,6 +70,9 @@ std::ostream& operator<<(std::ostream& out, MODEL::Type& m)
   {
   case MODEL::WCA2Dv1 :
     out<<"WCA2Dv1";
+    break;
+  case MODEL::WCA2Dv2 :
+    out<<"WCA2Dv2";
     break;
   default:
     out<<"UNKNOWN";

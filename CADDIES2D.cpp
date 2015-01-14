@@ -149,15 +149,19 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 // -------------------------//
 // Include the CA 2D functions //
 // -------------------------//
-#include CA_2D_INCLUDE(setBoundaryEle)
 #include CA_2D_INCLUDE(outflowWCA2Dv1)
 #include CA_2D_INCLUDE(waterdepthWCA2Dv1)
 #include CA_2D_INCLUDE(velocityWCA2Dv1)
+#include CA_2D_INCLUDE(infiltration)
+
+#include CA_2D_INCLUDE(setBoundaryEle)
 #include CA_2D_INCLUDE(removeUpstr)
 #include CA_2D_INCLUDE(updatePEAKC)
 #include CA_2D_INCLUDE(updatePEAKE)
 
-
+#include CA_2D_INCLUDE(outflowWCA2Dv2)
+#include CA_2D_INCLUDE(waterdepth)
+#include CA_2D_INCLUDE(velocityDiffusive)
 
 int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
 	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
@@ -426,6 +430,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
   // If true perform the infiltration step.
   bool useInfiltration  = false;
 
+  // The amount of water to remove during an update step.
+  CA::Real inf_updatedt = 0.0;
+
   // -- CREATE FULL MASK ---
   
   CA::createCellMask(fulldomain,GRID,ELV,MASK,nodata);
@@ -458,11 +465,18 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
  // Check if the infiltration computation is needed.
   useInfiltration = (setup.infrate_global>0);
 
+  // Transform from meter to mm and from hour to update_dt
+  inf_updatedt = ( setup.infrate_global * 0.001) * (period_time_dt/3600.0);
+
   if(setup.output_console)
   {
     std::cout<<"--------------------------------------------------------" << std::endl; 
     if(useInfiltration)
+    {
       std::cout<<"Infiltration computation     : yes"<< std::endl;
+      std::cout<<"Amount during an update step : "<< inf_updatedt<<std::endl;
+      std::cout<<"Attention                    : Beta code"<<std::endl;
+    }
     else
       std::cout<<"Infiltration computation     : no"<< std::endl;
     std::cout<<"--------------------------------------------------------" << std::endl; 
@@ -710,8 +724,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // Compute outflow using WCA2Dv2.
       // This save a division operation for each cell.
       CA::Real ratio_dt = dt/previous_dt; 
-      CA::State expand = setup.expand_domain;
-      //CA::Execute::function(compdomain, outflowWCA2Dv2, );       
+      CA::Execute::function(compdomain, outflowWCA2Dv2, GRID, (*POUTF1), (*POUTF2),
+			    ELV, WD, MASK, OUTFALARMS, ignore_wd, tol_delwl,dt,ratio_dt,irough);
+
       break;
     }
 
@@ -742,7 +757,11 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // amount of outflux for the WCA2Dv1 model. 
       CA::Execute::function(compdomain, waterdepthWCA2Dv1, GRID, WD, OUTF1, (*PTOT), MASK, dt, period_time_dt);
       break;
-    case MODEL::WCA2Dv2:
+
+    case MODEL::WCA2Dv2:      
+      // Generic water depth, use OUTF1, erase OUTF2.
+      CA::Execute::function(compdomain, waterdepth, GRID, WD, (*POUTF1),  (*POUTF2), MASK, dt);
+
       // Swap the double buffer
       // Now POUTF1 is zeroed while POUTF2 contains the previous flux.
       std::swap(POUTF1,POUTF2);
@@ -772,6 +791,25 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     {   
       // Reset the start of updatedt.
       start_updatedt = 0.0;
+
+      // Compute the Inflitration if needed. It uses the CellBuffer A (with
+      // velocity angle) as temporary buffer where to store the volume
+      // of water removed.
+      if(useInfiltration)
+      {
+	// Clear the angle.
+	A.clear();
+
+	CA::Execute::function(fulldomain, infiltration, GRID, WD, MASK,A,inf_updatedt);
+	
+	if(setup.check_vols)
+	{
+	  // Retrieve the volume removed through infiltration
+	  CA::Real vol = 0;
+	  A.sequentialOp(seqdomain, vol, CA::Seq::Add);                
+	  inf_volume+=vol;
+	}
+      }
 
       if(setup.ignore_upstream)
       {
@@ -816,6 +854,15 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 	break;
 
       case MODEL::WCA2Dv2:
+	// Clear the Velocity and angle.
+	V.clear();
+	A.clear();
+
+	// Compute the velocity using the last outflux (OUTF2)
+	// Compute dt using Hunter formual
+	CA::Execute::function(compdomain, velocityDiffusive, GRID, V, A, (*PDT), 
+			      WD, ELV, (*POUTF2), MASK, VELALARMS,
+			      tol_va, tol_slope,dt,irough,upstr_elv);
 	break;
       }
 
