@@ -20,7 +20,7 @@
 
  2. Minor items:
 
-  - This version is derived from the internal revision ???
+  - This version is derived from the internal revision 971
 
   - A new command line argument was added 'terrain-info' to compute
     only the information (Slope/Number of cells, etc.)
