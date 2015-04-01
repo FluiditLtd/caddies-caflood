@@ -95,6 +95,13 @@ install(FILES
   DESTINATION apps/caflood
   COMPONENT ${CAAPI_APP_COMPONENT_NAME})
 
+# Set the component name which will influence the archive name for the binary file
+set(CAAPI_BIN_COMPONENT_NAME "bin-${CAAPI_APP_NAME}-${CAAPI_APP_VERSION}")
+
+# Install source code.
+install(TARGETS ${CAAPI_APP_EXE}   
+  DESTINATION bin/
+  COMPONENT ${CAAPI_BIN_COMPONENT_NAME})
 
 ########################## PACKAGE  ##########################
 
@@ -102,5 +109,12 @@ install(FILES
 cpack_add_component(${CAAPI_APP_COMPONENT_NAME} DISPLAY_NAME "caflood version ${CAAPI_APP_VERSION}"
   DESCRIPTION "Application that performs a 2D flood modelling using cellular
     automata model(s) and it is implemented using the CAAPI"
+  GROUP  apps)
+
+# Add the newly created component
+cpack_add_component(${CAAPI_BIN_COMPONENT_NAME} DISPLAY_NAME "Binary of caflood version ${CAAPI_APP_VERSION}"
+  DESCRIPTION "Binary of the application that performs a 2D
+    flood modelling using cellular automata model(s) and it is
+    implemented using the CAAPI." 
   GROUP  apps)
 
