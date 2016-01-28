@@ -64,7 +64,7 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
 
     // -- ELEVATION FILE(s) --
     CA::AsciiGrid<CA::Real> eg;
-    CA::readAsciiGrid(eg,ele_file);
+	eg.readAsciiGrid(ele_file);
     
     // -- EXTRA CELLS --
     

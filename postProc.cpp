@@ -346,8 +346,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 		std::cout<<"Write Raster Grid: "<<filenameV<<" "<<filenameA<<std::endl;
 	      
 	      // Write the  data.
-	      CA::writeAsciiGrid(agtmp1,filenameV,setup.rast_places);	      
-	      CA::writeAsciiGrid(agtmp2,filenameA,setup.rast_places);	      	  
+		  agtmp1.writeAsciiGrid(filenameV,setup.rast_places);
+		  agtmp2.writeAsciiGrid(filenameA,setup.rast_places);
 	    }
 	    
 	    // Add the ID to remove.
@@ -374,7 +374,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	      std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	    
 	    // Write the data.
-	    CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	      
+		agtmp1.writeAsciiGrid(filename,setup.rast_places);
 	  }
 	  break;
 	case PV::WD:
@@ -391,7 +391,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	      std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	    
 	    // Write the data.
-	    CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	      
+		agtmp1.writeAsciiGrid(filename,setup.rast_places);
 	  }
 	  break;
 	default:
@@ -479,7 +479,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    std::cout<<"Write Raster Grid: "<<filenameV<<std::endl;
 	  
 	  // Write the data.
-	  CA::writeAsciiGrid(agtmp1,filenameV,setup.rast_places);	      
+	  agtmp1.writeAsciiGrid(filenameV,setup.rast_places);
 
 	  // Add the ID to remove.
 	  removeIDsCB.push_back(std::make_pair(setup.short_name+"_V","PEAK"));
@@ -505,7 +505,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	  
 	  // Write the data.
-	  CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	 
+	  agtmp1.writeAsciiGrid(filename,setup.rast_places);
 	}
 	break;
 	
@@ -523,7 +523,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	  
 	  // Write the data.
-	  CA::writeAsciiGrid(agtmp1,filename,setup.rast_places);	      
+	  agtmp1.writeAsciiGrid(filename,setup.rast_places);
 	}
 	break;
       default:

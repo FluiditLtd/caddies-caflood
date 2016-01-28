@@ -323,8 +323,9 @@ int main(int argc, char* argv[])
   std::string ele_file = ad.working_dir+ad.sdir+setup.elevation_ASCII; 
   CA::AsciiGrid<CA::Real> eg;
 
+
   // ATTENTION. Load only the header here .. not the actual data
-  CA::readAsciiGridHeader(eg,ele_file);
+  eg.readAsciiGridHeader(ele_file);
 
   if(ad.info)
   {
