@@ -261,8 +261,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	    }
 	    else
 	    {
-	      filenameV = removeExtension(rgdatas[i].filename) + "_V_" + strtime + ".asc";
-	      filenameA = removeExtension(rgdatas[i].filename) + "_A_" + strtime + ".asc";
+	      filenameV = removeExtension(rgdatas[i].filename) + "_V_" + strtime;
+	      filenameA = removeExtension(rgdatas[i].filename) + "_A_" + strtime;
 	    }
 	    
 	    // Reset the buffer
@@ -359,7 +359,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	case PV::WL:
 	  {
 	    // Create the name of the file.
-	    std::string filename = removeExtension(rgdatas[i].filename) + "_" + strtime + ".asc";	
+	    std::string filename = removeExtension(rgdatas[i].filename) + "_" + strtime;
 
 	    // Reset the buffer
 	    TMP1.fill(fulldomain,agtmp1.nodata);
@@ -380,7 +380,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 	case PV::WD:
 	  {
 	    // Create the name of the file.
-	    std::string filename = removeExtension(rgdatas[i].filename) + "_" + strtime + ".asc";	
+	    std::string filename = removeExtension(rgdatas[i].filename) + "_" + strtime;
 
 	    // Water depth already loaded.
 	    
@@ -457,7 +457,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
       case PV::VEL:
 	{
 	  // Create the name of the file.
-	  std::string filenameV = removeExtension(rgdatas[i].filename) + "_V_PEAK.asc";	
+	  std::string filenameV = removeExtension(rgdatas[i].filename) + "_V_PEAK";
 	  
 	  // Reset the buffer
 	  TMP1.fill(fulldomain,agtmp1.nodata);
@@ -489,7 +489,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
       case PV::WL:
 	{
 	  // Create the name of the file.
-	  std::string filename = removeExtension(rgdatas[i].filename) + "_PEAK.asc";	
+	  std::string filename = removeExtension(rgdatas[i].filename) + "_PEAK";
 	  
 	  // Reset the buffer
 	  TMP1.fill(fulldomain,agtmp1.nodata);
@@ -512,7 +512,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
       case PV::WD:
 	{
 	  // Create the name of the file.
-	  std::string filename = removeExtension(rgdatas[i].filename) + "_PEAK.asc";	
+	  std::string filename = removeExtension(rgdatas[i].filename) + "_PEAK";
 
 	  // Water depth already loaded.
 	  
