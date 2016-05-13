@@ -669,7 +669,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 	// Compute the total volume of water that is in the water
 	// depth (included the boundary cell).
 	WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
-	wd_volume *= GRID.length()*GRID.length();
+	wd_volume *= GRID.area();
 
 	std::cout<<"Volume check:"<<std::endl;
 	std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
@@ -1004,7 +1004,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // Compute the total volume of water that is in the water
       // depth (included the boundary cell).
       WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
-      wd_volume *= GRID.length()*GRID.length();
+      wd_volume *= GRID.area();
 
       std::cout<<"Volume check:"<<std::endl;
       std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume

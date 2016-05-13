@@ -304,7 +304,7 @@ void InflowManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real 
     // ATTENTION The volume is the total volume, it need to be
     // divided by the number of cells that are going to receive the
     // inflow. 
-    volume = volume/(_datas[i].grid_area/(_grid.length()*_grid.length()));
+    volume = volume/(_datas[i].grid_area/(_grid.area()));
 
     // Add (or subtract) the given volume into the water detph of the
     // given area.
