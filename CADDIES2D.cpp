@@ -87,6 +87,16 @@ void outputConsole(CA::Unsigned iter, CA::Unsigned oiter, CA::Real t, CA::Real d
 		   const Setup& setup)
 {
   std::cout<<"-----"<<std::endl;
+
+  // additional output requested by CIRP
+  CA::Real percentage = t / ((CA::Real)(setup.time_end - setup.time_start));
+  percentage *= 100.0;
+
+  std::stringstream percentageProcessStream;
+  percentageProcessStream.precision(2);
+  percentageProcessStream << std::fixed << percentage;
+  std::cout << "Progress (%): " << percentageProcessStream .str() << std::endl;
+
   std::cout<<"Total iterations = "<<iter<<" Simulation time (MIN) = "<<t/60
 	   <<" Last DT = "<<dt<<std::endl;
   std::cout<<"Last iterations  = "<<oiter <<" Average DT ="<<avgodt/oiter
