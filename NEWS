@@ -1,3 +1,25 @@
+### Overview Changes in caflood version 120 **(2018 Mar)** ###
+
+ 1. Major features:
+
+  - Abstracted the AsciiGrid to be implementation specific due to the for
+	hexagonal grid variations to square grids
+
+  
+ 2. Minor items:
+
+  - The primary storage has been migrated from and SVN to a GIT repository git.exeter.ac.uk
+  - This version is derived from the internal commit 44
+  
+  - added percentage progress indicator
+  
+  - inflow volume fix
+  
+
+ 3. Known missing features & problems:
+
+  - 
+
 ### Overview Changes in caflood version 110 **(2015 April)** ###
 
  1. Major features:
