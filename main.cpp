@@ -50,7 +50,7 @@ THE SOFTWARE.
 //! Print the version info to std output.
 inline void version()
 {
- std::cout<<"Copyright 2013 Centre for Water Systems, University of Exeter"<<std::endl;
+ std::cout<<"Copyright 2013–2021 Centre for Water Systems, University of Exeter & Fluidit Ltd."<<std::endl;
  std::cout<<"App                  : "<<CA_QUOTE_MACRO(CAAPI_APP_NAME)<<" ver. "<<CAAPI_APP_VERSION<<std::endl;
  std::cout<<"CA API Version       : "<<caVersion<<std::endl;
  std::cout<<"       Impl Name     : "<<caImplName<<std::endl;
@@ -75,7 +75,7 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
 //! \param[in] tps      The list of time plot outputs.
 //! \param[in] rgs      The list of raster grid outputs.
 //! \return A non zero value if there was an error.
-int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg,
+int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real>& eg,
 	     const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
 
 
@@ -93,7 +93,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
 //! \param[in] tps      The list of time plot outputs.
 //! \param[in] rgs      The list of raster grid outputs.
 //! \return A non zero value if there was an error.
-int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
+int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg, 
+        const CA::ESRI_ASCIIGrid<CA::Real>& manning_grid, 
 	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
 	      const std::vector<IEvent>& ies, 
 	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
@@ -102,7 +103,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 //! Return the terrrain info of the CA2D model to simulate. 
 //! \attention The preProc function should be called before this one.
 //! \warning If "Remove Pre-proc data is true, this function remove them."
-int terrainInfo(const ArgsData& ad,Setup& setup, const CA::AsciiGrid<CA::Real>& eg);
+int terrainInfo(const ArgsData& ad,Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg);
 
 
 int main(int argc, char* argv[])
@@ -276,6 +277,7 @@ int main(int argc, char* argv[])
     std::cout<<"Slope Tolerance (%)       : "<<setup.tol_slope<<std::endl;
     std::cout<<"Boundary Ele              : "<<setup.boundary_elv<<std::endl;
     std::cout<<"Elevation ASCII           : "<<setup.elevation_ASCII<<std::endl;
+    std::cout<<"Manning ASCII             : "<<setup.manning_ASCII<<std::endl;
     std::cout<<"Rain Event CSV            : ";
     for(size_t i = 0; i< setup.rainevent_files.size(); ++i)
       std::cout<<setup.rainevent_files[i]<<" ";
@@ -321,7 +323,7 @@ int main(int argc, char* argv[])
 
   //! Load the eventual elevation.
   std::string ele_file = ad.working_dir+ad.sdir+setup.elevation_ASCII; 
-  CA::AsciiGrid<CA::Real> eg;
+  CA::ESRI_ASCIIGrid<CA::Real> eg;
 
 
   // ATTENTION. Load only the header here .. not the actual data
@@ -330,6 +332,25 @@ int main(int argc, char* argv[])
   if(ad.info)
   {
     std::cout<<"Elevation ASCII    : "<<setup.elevation_ASCII<<std::endl;
+    std::cout<<"ncols              : "<<eg.ncols<<std::endl;
+    std::cout<<"nrows              : "<<eg.nrows<<std::endl;
+    std::cout<<"xllcorner          : "<<eg.xllcorner<<std::endl;
+    std::cout<<"yllcorner          : "<<eg.yllcorner<<std::endl;
+    std::cout<<"cellsize           : "<<eg.cellsize<<std::endl;
+    std::cout<<"nodata             : "<<eg.nodata<<std::endl;
+  }
+
+  //! Load the Manning file.
+  std::string manning_file = ad.working_dir+ad.sdir+setup.manning_ASCII;
+  CA::ESRI_ASCIIGrid<CA::Real> manning_grid;
+
+
+  // ATTENTION. Load only the header here .. not the actual data
+  manning_grid.readAsciiGridHeader(manning_file);
+
+  if(ad.info)
+  {
+    std::cout<<"Manning ASCII      : "<<setup.manning_ASCII<<std::endl;
     std::cout<<"ncols              : "<<eg.ncols<<std::endl;
     std::cout<<"nrows              : "<<eg.nrows<<std::endl;
     std::cout<<"xllcorner          : "<<eg.xllcorner<<std::endl;
@@ -570,7 +591,7 @@ int main(int argc, char* argv[])
       if(ad.info)
 	std::cout<<std::endl<<"Starting CADDIES2D flood modelling using "<<setup.model_type<<" model"<<std::endl;
 
-      if(CADDIES2D(ad,setup,eg,res,wles,ies,tps,rgs)!=0)
+      if(CADDIES2D(ad,setup,eg,manning_grid,res,wles,ies,tps,rgs)!=0)
       {
 	std::cerr<<"Error while performing CADDIES2D flood modelling"<<std::endl;
 	return EXIT_FAILURE;    

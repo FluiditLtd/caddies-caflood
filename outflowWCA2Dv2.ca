@@ -39,10 +39,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 // ATTENTION, This version uses the inverse roughness 
 
 CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_REAL_I OUTF2,
-			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I WD, 
+			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING, CA_CELLBUFF_REAL_I WD, 
 			   CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS, 
 			   CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
-			   CA_GLOB_REAL_I dt, CA_GLOB_REAL_I ratio_dt, CA_GLOB_REAL_I irough)
+			   CA_GLOB_REAL_I dt, CA_GLOB_REAL_I ratio_dt)
 {					       
   // Initialise the grid
   CA_GRID_INIT(grid);
@@ -60,6 +60,9 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
   // water do not compute the cell.
   if(!(bit0 == 0 ||  wdmain < ignore_wd))
   {
+    // Retrieve the roughness of the main cell.
+    CA_REAL roughness = 1.0 / caReadCellBuffReal(grid,MANNING,0);    
+      
     // Create an array which will contain various water values during the
     // computation for each neighbourh cell, in the following order:
     // 1) WATER depth
@@ -175,16 +178,16 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
 
     // Compute the maximum velocity using Mannign equation and
     // critical velocity. The maximum velocity allowed is 20 m/s
-    CA_REAL max_vh  = caMinReal(20.0, caFlowVelocity(irough,delwl_max/dist_max,wdmain,wdmain));
+    CA_REAL max_vh  = caMinReal(20.0, caFlowVelocity(roughness,delwl_max/dist_max,wdmain,wdmain));
 
-    // Compute maximum flux using maximum veocity and the data from the
+    // Compute maximum flux using maximum velocity and the data from the
     // cell with maximum weight.
     CA_REAL max_flux = max_vh * wdmain * dt * dx_max;  
 
     // Compute the total amount of output water volume that we can move
     // from the main cell. This is the minimum between.
     // 1) the minimum difference of water level of the  neighbourhood ...
-    //    ... plust the previous outflow.
+    //    ... plus the previous outflow.
     // 2) the water level in the cell.
     // 3) the total flux available depending on the maximum flux.
     CA_REAL outwv = caMinReal(caMinReal(mindelwv+totalinw,max_flux*(totalw/weight_max)), 

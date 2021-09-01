@@ -173,9 +173,11 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 #include CA_2D_INCLUDE(waterdepth)
 #include CA_2D_INCLUDE(velocityDiffusive)
 
-int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Real>& eg, 
+int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg, 
+		  const CA::ESRI_ASCIIGrid<CA::Real>& manning_grid,
+          const CA::ESRI_ASCIIGrid<CA::Real>& permeability_grid,
 	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
-	      const std::vector<IEvent>& ies, 
+	      const std::vector<IEvent>& ies,
 	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
 {
 
@@ -293,6 +295,42 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
     std::cout<<"Loaded Elevation data"<< std::endl;
     std::cout<<"Highest elevation = "<< high_elv<<std::endl;
   }
+
+
+  // -- MANNING GRID ---
+
+  // Create the Manning roughness cell buffer.
+  // It contains a "real" value in each cell of the grid.
+  CA::CellBuffReal  MANNING(GRID);
+
+  // Set the border of the Manning buffer to be no data.
+  MANNING.bordersValue(borders, manning_grid.nodata);
+
+  // Se the default value of the Manning to be the global Manning coefficient.
+  MANNING.fill(fulldomain, setup.roughness_global);
+
+  // Load the data not from the Manning file but from the pre-processed file.
+  if(!MANNING.loadData(setup.preproc_name+"_MANNING","0") )
+    std::cerr<<"Error while loading the Manning pre-processed file"<<std::endl;
+
+
+  // -- Permeability GRID ---
+
+  // Create the permeability cell buffer.
+  // It contains a "real" value in each cell of the grid.
+  CA::CellBuffReal  PERMEABILITY(GRID);
+
+  // Set the border of the elevation buffer to be no data.
+  PERMEABILITY.bordersValue(borders, manning_grid.nodata);
+
+  // Se the default value of the permeability to be 1.
+  PERMEABILITY.fill(fulldomain, 1.0);
+
+  // Load the data not from the Manning file but from the pre-processed file.
+  if(!PERMEABILITY.loadData(setup.preproc_name+"_PERMEABILITY","0") )
+    std::cerr<<"Error while loading the permeability pre-processed file"<<std::endl;
+
+
   // ----  CELL BUFFERS ----
     
   // Create  the water depth cell buffer.
@@ -726,8 +764,8 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       
       // Compute outflow using WCA2Dv1.
       // Check if there is an outflow in the border of the box.
-      CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF1, ELV, WD, MASK, OUTFALARMS,
-			    ignore_wd, tol_delwl,dt, irough);
+      CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF1, ELV, MANNING, WD, MASK, OUTFALARMS,
+			    ignore_wd, tol_delwl,dt);
 
       break;
     case MODEL::WCA2Dv2:
@@ -735,7 +773,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
       // This save a division operation for each cell.
       CA::Real ratio_dt = dt/previous_dt; 
       CA::Execute::function(compdomain, outflowWCA2Dv2, GRID, (*POUTF1), (*POUTF2),
-			    ELV, WD, MASK, OUTFALARMS, ignore_wd, tol_delwl,dt,ratio_dt,irough);
+			    ELV, MANNING, PERMEABILITY, WD, MASK, OUTFALARMS, ignore_wd, tol_delwl,dt,ratio_dt);
 
       break;
     }
@@ -857,7 +895,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 	// Attention the tollerance is different here. 
 	// Check if there is water movement over the upstream elevation threshould.
 	CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, (*PTOT), MASK, VELALARMS,
-			      tol_va, period_time_dt, irough, upstr_elv);
+			      tol_va, period_time_dt, MANNING, upstr_elv);
 	
 	// CLear the total outflux.
 	(*PTOT).clear();
@@ -872,7 +910,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::AsciiGrid<CA::Re
 	// Compute dt using Hunter formual
 	CA::Execute::function(compdomain, velocityDiffusive, GRID, V, A, (*PDT), 
 			      WD, ELV, (*POUTF2), MASK, VELALARMS,
-			      tol_va, tol_slope,dt,irough,upstr_elv);
+			      tol_va, tol_slope,dt,MANNING,upstr_elv);
 	break;
       }
 

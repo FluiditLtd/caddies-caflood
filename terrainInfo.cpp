@@ -41,7 +41,7 @@ THE SOFTWARE.
 // Return the terrrain info of the CA2D model to simulate. 
 // \attention The preProc function should be called before this one.
 // \warning If "Remove Pre-proc data is true, this function remove them."
-int terrainInfo(const ArgsData& ad,Setup& setup, const CA::AsciiGrid<CA::Real>& eg)
+int terrainInfo(const ArgsData& ad,Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg)
 {
   
   // ----  Timer ----

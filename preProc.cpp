@@ -63,14 +63,14 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
   {
 
     // -- ELEVATION FILE(s) --
-    CA::AsciiGrid<CA::Real> eg;
+    CA::ESRI_ASCIIGrid<CA::Real> eg;
 	eg.readAsciiGrid(ele_file);
     
     // -- EXTRA CELLS --
     
     // Given the way the boundary cells are computed (see later), we
     // need to add an extra set of cells in each direction.
-    CA::AsciiGrid<CA::Real> grid;
+    CA::ESRI_ASCIIGrid<CA::Real> grid;
     grid.ncols     = eg.ncols+2;
     grid.nrows     = eg.nrows+2;
     grid.xllcorner = eg.xllcorner-eg.cellsize; // ATTENTION HERE!

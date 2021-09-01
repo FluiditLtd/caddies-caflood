@@ -63,7 +63,7 @@ inline CA::Real nextTimeNearestAction(CA::Real t, CA::Real t_nearest, CA::Real p
 
 
 //! Perform the post processing of the data for a CA 2D model. 
-int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg,
+int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real>& eg,
 	     const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
 {
   
@@ -118,8 +118,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::AsciiGrid<CA::Real>& eg
   realdomain.add(realbox);
 
   // CREATE ASCII GRID TEMPORARY BUFFERS
-  CA::AsciiGrid<CA::Real>& agtmp1 = eg;
-  CA::AsciiGrid<CA::Real>  agtmp2 = eg;
+  CA::ESRI_ASCIIGrid<CA::Real>& agtmp1 = eg;
+  CA::ESRI_ASCIIGrid<CA::Real>  agtmp2 = eg;
 
   // -- INITIALISE ELEVATION ---
 

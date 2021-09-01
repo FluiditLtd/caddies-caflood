@@ -36,7 +36,7 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
 			    CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, 
 			    CA_EDGEBUFF_REAL_I TOTOUTF,
 			    CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
-			    CA_GLOB_REAL_I tol, CA_GLOB_REAL_I updatedt, CA_GLOB_REAL_I irough, 
+			    CA_GLOB_REAL_I tol, CA_GLOB_REAL_I updatedt, CA_CELLBUFF_REAL_I roughness, 
 			    CA_GLOB_REAL_I upstr_elv)
 {
   // Initialise the grid
@@ -64,6 +64,9 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
   if(bit0 == 0)
     return;
 
+  // Retrieve the roughness of the main cell.
+  CA_REAL  roughness = 1.0 / caReadCellBuffReal(grid,MANNING,0);
+  
   // Read the water depth and elevation of the neighbourhood cells.
   caReadCellBuffRealCellArray(grid,WD ,WDA);
   caReadCellBuffRealCellArray(grid,ELV,ELVA);
@@ -104,7 +107,7 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
     // can be updated without overwriting the buffer, the outflux is
     // positive otherwise is negative. Change that each outflux is
     // positive and each influx is negative.  
-    if(e<=caUpdateEdges(grid))
+    if(e <= caUpdateEdges(grid))
       TOTFLUXES[e] = TOTFLUXES[e];
     else
       TOTFLUXES[e] = -TOTFLUXES[e];
@@ -114,21 +117,21 @@ CA_FUNCTION velocityWCA2Dv1(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REA
 
     // Compute the velocity considering only the cell with enough
     // water and a positive outfluxes.
-    if((TOTFLUXES[e])>0 && wd >= tol)      
+    if((TOTFLUXES[e]) > 0 && wd >= tol)      
     {
       // Find the velocity using the total fluxes
       vh = TOTFLUXES[e] / (wd * dx * updatedt);
 
       // Compute Radious and Slope
-      CA_REAL delwl = caAbsReal(WLA[0]-WLA[e]); 
+      CA_REAL delwl = caAbsReal(WLA[0] - WLA[e]); 
       CA_REAL R     = caMaxReal(WLA[0],WLA[e]) - caMaxReal(ELVA[0], ELVA[e]);
-      CA_REAL S     = caMinReal(wd,delwl)/dx;
+      CA_REAL S     = caMinReal(wd, delwl) / dx;
 
       // Limit velocity by computing the Manning equation 
-      vh = caMinReal( vh, irough*caPowReal(R,(2.0/3.0)) * caSqrtReal(S) );       
+      vh = caMinReal( vh, roughness * caPowReal(R, (2.0 / 3.0)) * caSqrtReal(S) );       
 
       // Limit velocity by computing critical velocity.
-      vh = caMinReal( vh, caSqrtReal(9.81*wd) );
+      vh = caMinReal( vh, caSqrtReal(9.81 * wd) );
       
       // Compute the velocity vector x and y.
       x += vh * caCosReal(ANGLE[e]);

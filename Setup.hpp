@@ -72,9 +72,14 @@ struct Setup
 
   //  --- ELEVATION  ---  
   //! ARC/INFO ASCII GRID format file with the specific
-  //! elavation value for each cell and the no data value.
+  //! elevation value for each cell and the no data value.
   std::string   elevation_ASCII; 
   
+  //  --- MANNING  ---
+  //! ARC/INFO ASCII GRID format file with the specific
+  //! Manning roughness value for each cell and the no data value.
+  std::string   manning_ASCII;
+
   //  --- RAIN EVENT  ---  
   //! CSV file(s) with the configuration of the rain event(s) to add
   //! into the grid.

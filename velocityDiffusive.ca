@@ -32,7 +32,7 @@ CA_FUNCTION velocityDiffusive(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_R
 			      CA_EDGEBUFF_REAL_IO OUTF, 
 			      CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
 			      CA_GLOB_REAL_I tol_wd, CA_GLOB_REAL_I tol_slope, 
-			      CA_GLOB_REAL_I prev_dt, CA_GLOB_REAL_I irough, 
+			      CA_GLOB_REAL_I prev_dt, CA_CELLBUFF_REAL_I MANNING, 
 			      CA_GLOB_REAL_I upstr_elv)
 {
   // Initialise the grid
@@ -63,6 +63,9 @@ CA_FUNCTION velocityDiffusive(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_R
   caReadCellBuffRealCellArray(grid,WD ,WLA);
   caReadCellBuffRealCellArray(grid,ELV,ELVA);
 
+  // Retrieve the roughness of the main cell.
+  CA_REAL roughness = caReadCellBuffReal(grid,MANNING,0);
+  
   // STORE the main cell water depth
   CA_REAL wdmain = WLA[0];
 
@@ -130,7 +133,7 @@ CA_FUNCTION velocityDiffusive(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_R
       if(S>=tol_slope)
       {
 	// Compute the alpha of the time step.
-	alpha = caMinReal(alpha,((2*1/irough)/caPowReal(Hf,5.0/3.0))*caSqrtReal(S));
+	alpha = caMinReal(alpha,((2*roughness)/caPowReal(Hf,5.0/3.0))*caSqrtReal(S));
       }
 
       // Compute the velocity vector x and y.

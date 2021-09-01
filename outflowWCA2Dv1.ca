@@ -35,10 +35,10 @@ THE SOFTWARE.
 // is in the border of the box and set an alarm.
 
 CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
-			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I WD, 
+			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING, CA_CELLBUFF_REAL_I WD, 
 			   CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
 			   CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
-			   CA_GLOB_REAL_I dt, CA_GLOB_REAL_I irough)
+			   CA_GLOB_REAL_I dt)
 {					       
   // Initialise the grid
   CA_GRID_INIT(grid);
@@ -49,6 +49,9 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   // Retrieve the water depth of the main cell.
   CA_REAL  wdmain = caReadCellBuffReal(grid,WD,0);
   
+  // Retrieve the roughness of the main cell.
+  CA_REAL  roughness = 1.0 / caReadCellBuffReal(grid,MANNING,0);
+
   // Read bit 0  (false the main cell has nodata)
   CA_STATE bit0  = caReadBitsState(mask,0,1);
 
@@ -64,8 +67,8 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   // 3) WATER difference with main cell.
   CA_ARRAY_CREATE(grid, CA_REAL, WATER,caNeighbours+1);
   
-  // Create an array wich will contain vairous weight value during the
-  // computation for each eighbour cell, in the follwoing order:
+  // Create an array which will contain various weight value during the
+  // computation for each neighbour cell, in the following order:
   // 1) Elevation
   // 2) Weight.
   // Attention, for the majority of the code whe we talk about weight
@@ -75,7 +78,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   // Read the water depth of the neighbourhood cells (store temporarily into WATER).
   caReadCellBuffRealCellArray(grid,WD,WATER);
 
-  // Read the elevation of the neighbourhood cells, (stored temporarly in WEIGHT).
+  // Read the elevation of the neighbourhood cells, (stored temporarily in WEIGHT).
   caReadCellBuffRealCellArray(grid,ELV,WEIGHT);
 
   // The minimum difference in water volume This is set as maximum as
@@ -155,7 +158,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   // equation. Limits this factor to be no more than sqrt(9.81)~3.132 which
   // is the critical velocity factor.
   // Water contains water difference
-  CA_REAL factor_vh = caMinReal( irough*caSqrtReal(delwl_max/dx_max), 3.132 );
+  CA_REAL factor_vh = caMinReal( roughness*caSqrtReal(delwl_max/dx_max), 3.132 );
 
   // Compute a the simplified Manninq equation where instead
   // of using R^(2/3) we use WD^(1/2). Thus it is a mix between

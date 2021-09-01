@@ -185,6 +185,14 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
       setup.elevation_ASCII = CA::trimToken(str);
     }
 
+    if(CA::compareCaseInsensitive("Manning ASCII",tokens[0],true))
+    {
+      std::string str;
+      READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
+
+      setup.manning_ASCII = CA::trimToken(str);
+    }
+
     if(CA::compareCaseInsensitive("Rain Event CSV",tokens[0],true))
     {
       found_tok=true;
