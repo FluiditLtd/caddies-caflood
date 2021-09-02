@@ -65,7 +65,7 @@ inline void version()
 //! \param[in] setup    The setup of the simulation.
 //! \param[in] ele_file The elevation file.
 //! \return A non zero value if there was an error.
-int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file); 
+int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file, const std::string& manning_file, const std::string& permeability_file); 
 
 
 //! Perform the post processing of the data for a CA 2D model. 
@@ -84,20 +84,21 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 //!  This function perform the following models:
 //! 1) WCA2Dv1
 //! 2) WCA2Dv2
-//! \param[in] ad       The arguments data.
-//! \param[in] setup    The setup of the simulation.
-//! \param[in] eg       The elevation grid.
-//! \param[in] res      The list of rain event inputs.
-//! \param[in] wles     The list of water level event inputs.
-//! \param[in] ies      The list of inflow event inputs.
-//! \param[in] tps      The list of time plot outputs.
-//! \param[in] rgs      The list of raster grid outputs.
+//! \param[in] ad            The arguments data.
+//! \param[in] setup         The setup of the simulation.
+//! \param[in] eg            The elevation grid.
+//! \param[in] res           The list of rain event inputs.
+//! \param[in] wles          The list of water level event inputs.
+//! \param[in] ies           The list of inflow event inputs.
+//! \param[in] tps           The list of time plot outputs.
+//! \param[in] rgs           The list of raster grid outputs.
 //! \return A non zero value if there was an error.
 int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg, 
-        const CA::ESRI_ASCIIGrid<CA::Real>& manning_grid, 
-	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
-	      const std::vector<IEvent>& ies, 
-	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
+        //const CA::ESRI_ASCIIGrid<CA::Real>& manning_grid, 
+        //const CA::ESRI_ASCIIGrid<CA::Real>& permeability_grid, 
+        const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
+        const std::vector<IEvent>& ies, 
+        const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
 
 
 //! Return the terrrain info of the CA2D model to simulate. 
@@ -278,6 +279,7 @@ int main(int argc, char* argv[])
     std::cout<<"Boundary Ele              : "<<setup.boundary_elv<<std::endl;
     std::cout<<"Elevation ASCII           : "<<setup.elevation_ASCII<<std::endl;
     std::cout<<"Manning ASCII             : "<<setup.manning_ASCII<<std::endl;
+    std::cout<<"Permeability ASCII        : "<<setup.permeability_ASCII<<std::endl;
     std::cout<<"Rain Event CSV            : ";
     for(size_t i = 0; i< setup.rainevent_files.size(); ++i)
       std::cout<<setup.rainevent_files[i]<<" ";
@@ -341,23 +343,19 @@ int main(int argc, char* argv[])
   }
 
   //! Load the Manning file.
-  std::string manning_file = ad.working_dir+ad.sdir+setup.manning_ASCII;
-  CA::ESRI_ASCIIGrid<CA::Real> manning_grid;
+  std::string manning_file;
+  if (setup.manning_ASCII != "")
+      manning_file = ad.working_dir+ad.sdir+setup.manning_ASCII;
+  else
+      manning_file = "";
 
-
-  // ATTENTION. Load only the header here .. not the actual data
-  manning_grid.readAsciiGridHeader(manning_file);
-
-  if(ad.info)
-  {
-    std::cout<<"Manning ASCII      : "<<setup.manning_ASCII<<std::endl;
-    std::cout<<"ncols              : "<<eg.ncols<<std::endl;
-    std::cout<<"nrows              : "<<eg.nrows<<std::endl;
-    std::cout<<"xllcorner          : "<<eg.xllcorner<<std::endl;
-    std::cout<<"yllcorner          : "<<eg.yllcorner<<std::endl;
-    std::cout<<"cellsize           : "<<eg.cellsize<<std::endl;
-    std::cout<<"nodata             : "<<eg.nodata<<std::endl;
-  }
+  //! Load the permeability file.
+  std::string permeability_file;
+  if (setup.permeability_ASCII != "")
+      permeability_file = ad.working_dir+ad.sdir+setup.permeability_ASCII;
+  else
+      permeability_file = "";
+  
 
   if(ad.info)
     std::cout<<std::endl<<"Load rain event inputs configuration "<<std::endl;
@@ -550,7 +548,7 @@ int main(int argc, char* argv[])
       if(ad.info)
 	std::cout<<std::endl<<"Starting pre-processing data "<<std::endl;
    
-      if(preProc(ad,setup,ele_file)!=0)
+      if(preProc(ad, setup, ele_file, manning_file, permeability_file)!=0)
       {
 	std::cerr<<"Error while performing pre-processing"<<std::endl;
 	std::cerr<<"Possible cause is the output directory argument"<<std::endl;
@@ -591,7 +589,7 @@ int main(int argc, char* argv[])
       if(ad.info)
 	std::cout<<std::endl<<"Starting CADDIES2D flood modelling using "<<setup.model_type<<" model"<<std::endl;
 
-      if(CADDIES2D(ad,setup,eg,manning_grid,res,wles,ies,tps,rgs)!=0)
+      if(CADDIES2D(ad,setup,eg,res,wles,ies,tps,rgs)!=0)
       {
 	std::cerr<<"Error while performing CADDIES2D flood modelling"<<std::endl;
 	return EXIT_FAILURE;    

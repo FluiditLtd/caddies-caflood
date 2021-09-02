@@ -193,6 +193,14 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
       setup.manning_ASCII = CA::trimToken(str);
     }
 
+    if(CA::compareCaseInsensitive("Permeability ASCII",tokens[0],true))
+    {
+      std::string str;
+      READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
+
+      setup.permeability_ASCII = CA::trimToken(str);
+    }
+
     if(CA::compareCaseInsensitive("Rain Event CSV",tokens[0],true))
     {
       found_tok=true;
@@ -226,6 +234,18 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
 	READ_TOKEN(found_tok,str,tokens[i],tokens[0]);
 
 	setup.inflowevent_files.push_back(CA::trimToken(str));
+      }
+    }
+
+    if(CA::compareCaseInsensitive("Coupling CSV",tokens[0],true))
+    {
+      found_tok=true;
+      for (size_t i=1; i<tokens.size(); ++i)
+      {
+	std::string str;
+	READ_TOKEN(found_tok,str,tokens[i],tokens[0]);
+
+	setup.coupling_files.push_back(CA::trimToken(str));
       }
     }
 

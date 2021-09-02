@@ -80,6 +80,11 @@ struct Setup
   //! Manning roughness value for each cell and the no data value.
   std::string   manning_ASCII;
 
+  //  --- PERMEABILITY  ---
+  //! ARC/INFO ASCII GRID format file with the specific
+  //! permeability value for each cell and the no data value.
+  std::string   permeability_ASCII;
+
   //  --- RAIN EVENT  ---  
   //! CSV file(s) with the configuration of the rain event(s) to add
   //! into the grid.
@@ -94,6 +99,11 @@ struct Setup
   //! CSV file(s) with the configuration of the inflow event(s)
   //! to add into the grid.
   std::vector<std::string> inflowevent_files;
+
+  //  --- COUPLINGS  ---  
+  //! CSV file(s) with the configuration of the 1D couplings
+  //! to add into the grid.
+  std::vector<std::string> coupling_files;
 
   
   //  --- TIMEPLOT  ---  

@@ -37,7 +37,8 @@ THE SOFTWARE.
 //! Perform the pre processing of the data for a CA 2D model. It
 //! mainly save the elevation file.
 //! \attention The GRID size add an extra set of cells in each directions.
-int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
+int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file,
+            const std::string& manning_file, const std::string& permeability_file)
 {
   
   if(setup.output_computation)
@@ -153,6 +154,135 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file)
     if(setup.output_console)
       std::cout<<"Saved Elevation data"<< std::endl;
   }
+
+  
+  // Check if pre-process data is already there
+  if( CA::Grid::exist(ad.data_dir,setup.preproc_name+"_Manning","0") &&
+      CA::CellBuffReal::existData(ad.data_dir,setup.preproc_name+"_MANNING","0") )
+  {
+
+    if(setup.output_console)
+      std::cout<<"Pre-proc data already exist for Manning grid"<< std::endl;    
+  }
+  else
+  {
+    CA::Grid  GRID(ad.data_dir,setup.preproc_name+"_Grid","0", ad.args.active());
+    // Create the full (extended) computational domain of CA grid. 
+    CA::BoxList  fulldomain;
+    CA::Box      fullbox = GRID.box();
+    fulldomain.add(fullbox);
+
+    // Create a borders object that contains all the borders and
+    // corners of the grid.
+    CA::Borders borders;
+    
+    borders.addSegment(CA::Top);
+    borders.addSegment(CA::Bottom);
+    borders.addSegment(CA::Right);
+    borders.addSegment(CA::Left);
+    
+    borders.addCorner(CA::TopLeft);
+    borders.addCorner(CA::TopRight);
+    borders.addCorner(CA::BottomLeft);
+    borders.addCorner(CA::BottomRight);
+    
+    CA::BoxList  realdomain;
+    CA::Box      realbox(GRID.box().x()+1,GRID.box().y()+1,GRID.box().w()-2,GRID.box().h()-2);
+    realdomain.add(realbox);    
+    
+    // Create the Manning cell buffer.
+    // It contains a "real" value in each cell of the grid.
+    CA::CellBuffReal  MANNING(GRID);
+    
+    // Se the default value of the Manning to be nodata.
+    MANNING.fill(fulldomain, setup.roughness_global);
+    
+    if (manning_file != "")
+    {
+        CA::ESRI_ASCIIGrid<CA::Real> manning_grid;
+        manning_grid.readAsciiGrid(manning_file);
+
+        // Insert the DEM data into the elevation cell buffer. The first
+        // parameter is the region of the buffer to write the data which is
+        // the real domain, i.e. the original non extended domain.
+        MANNING.insertData(realbox, &manning_grid.data[0], manning_grid.ncols, manning_grid.nrows);
+    }
+    
+    // Save the data of the Elevation
+    if( !MANNING.saveData(setup.preproc_name+"_MANNING","0") )
+    {
+      std::cerr<<"Error while saving the Manning data"<<std::endl;
+      return 1;
+    }
+
+    if(setup.output_console)
+      std::cout<<"Saved Manning data"<< std::endl;
+  }
+
+  
+  // Check if pre-process data is already there
+  if( CA::Grid::exist(ad.data_dir,setup.preproc_name+"_Permeability","0") &&
+      CA::CellBuffReal::existData(ad.data_dir,setup.preproc_name+"_PERMEABILITY","0") )
+  {
+
+    if(setup.output_console)
+      std::cout<<"Pre-proc data already exist for permeability grid"<< std::endl;    
+  }
+  else
+  {
+    CA::Grid  GRID(ad.data_dir,setup.preproc_name+"_Grid","0", ad.args.active());
+    // Create the full (extended) computational domain of CA grid. 
+    CA::BoxList  fulldomain;
+    CA::Box      fullbox = GRID.box();
+    fulldomain.add(fullbox);
+
+    // Create a borders object that contains all the borders and
+    // corners of the grid.
+    CA::Borders borders;
+    
+    borders.addSegment(CA::Top);
+    borders.addSegment(CA::Bottom);
+    borders.addSegment(CA::Right);
+    borders.addSegment(CA::Left);
+    
+    borders.addCorner(CA::TopLeft);
+    borders.addCorner(CA::TopRight);
+    borders.addCorner(CA::BottomLeft);
+    borders.addCorner(CA::BottomRight);
+    
+    CA::BoxList  realdomain;
+    CA::Box      realbox(GRID.box().x()+1,GRID.box().y()+1,GRID.box().w()-2,GRID.box().h()-2);
+    realdomain.add(realbox);    
+    
+    // Create the permeability cell buffer.
+    // It contains a "real" value in each cell of the grid.
+    CA::CellBuffReal  PERMEABILITY(GRID);
+    
+    // Se the default value of the permeability to be 1,0.
+    PERMEABILITY.fill(fulldomain, 1.0);
+    
+    if (permeability_file != "")
+    {
+        CA::ESRI_ASCIIGrid<CA::Real> permeability_grid;
+        permeability_grid.readAsciiGrid(permeability_file);
+
+        // Insert the DEM data into the elevation cell buffer. The first
+        // parameter is the region of the buffer to write the data which is
+        // the real domain, i.e. the original non extended domain.
+        PERMEABILITY.insertData(realbox, &permeability_grid.data[0], permeability_grid.ncols, permeability_grid.nrows);
+    }
+    
+    // Save the data of the Elevation
+    if( !PERMEABILITY.saveData(setup.preproc_name+"_PERMEABILITY","0") )
+    {
+      std::cerr<<"Error while saving the permeability data"<<std::endl;
+      return 1;
+    }
+
+    if(setup.output_console)
+      std::cout<<"Saved permeability data"<< std::endl;
+  }
+  
 
   // ---- TIME OUTPUT ----
 

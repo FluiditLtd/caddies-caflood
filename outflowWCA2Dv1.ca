@@ -35,7 +35,8 @@ THE SOFTWARE.
 // is in the border of the box and set an alarm.
 
 CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
-			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING, CA_CELLBUFF_REAL_I WD, 
+			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING,
+               CA_CELLBUFF_REAL_I PERMEABILITY, CA_CELLBUFF_REAL_I WD, 
 			   CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
 			   CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
 			   CA_GLOB_REAL_I dt)
@@ -65,7 +66,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   // 1) WATER depth
   // 2) WATER level
   // 3) WATER difference with main cell.
-  CA_ARRAY_CREATE(grid, CA_REAL, WATER,caNeighbours+1);
+  CA_ARRAY_CREATE(grid, CA_REAL, WATER, caNeighbours+1);
   
   // Create an array which will contain various weight value during the
   // computation for each neighbour cell, in the following order:
@@ -76,10 +77,10 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   CA_ARRAY_CREATE(grid, CA_REAL, WEIGHT, caNeighbours+1);  
 
   // Read the water depth of the neighbourhood cells (store temporarily into WATER).
-  caReadCellBuffRealCellArray(grid,WD,WATER);
+  caReadCellBuffRealCellArray(grid, WD, WATER);
 
   // Read the elevation of the neighbourhood cells, (stored temporarily in WEIGHT).
-  caReadCellBuffRealCellArray(grid,ELV,WEIGHT);
+  caReadCellBuffRealCellArray(grid, ELV, WEIGHT);
 
   // The minimum difference in water volume This is set as maximum as
   // starting value and re-check for each positive difference
@@ -94,8 +95,16 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   CA_REAL dx_max     = 0.0;
     
   // Compute the water level of the central cell since WATER and WEIGHT
-  // contein respectively the water detph and elevation.
-  WATER[0]+=WEIGHT[0];    
+  // contain respectively the water detph and elevation.
+  WATER[0] += WEIGHT[0];    
+
+  // Compute the water level of the cells since WATER and WEIGHT
+  // contain respectively the water depth and elevation.
+  for(int k=1; k<=caNeighbours; ++k)
+    WATER[k] += WEIGHT[k];
+
+  // Read the permeabilities of the neighbourhood cells, (stored temporarly in WEIGHT).
+  caReadCellBuffRealCellArray(grid, PERMEABILITY, WEIGHT);
 
   // Find the difference in water level / water volume between the
   // main cell and each neighbour cell in order to compute the weight.
@@ -103,10 +112,6 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   {
     // The weight value of this neighbour cell.
     CA_REAL weight = 0.0;
-
-    // Compute the water level of the cell since WATER and WEIGHT
-    // contein respectively the water detph and elevation.
-    WATER[k]+=WEIGHT[k];
 
     // Compute the difference in water level (wich cannot be more than
     // a limiting value). This will be store in WLA;
@@ -117,7 +122,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
     if(delwl>tol_delwl)
     {
       // Compute the difference in water volume.
-      CA_REAL delwv = delwl * caArea(grid,k);
+      CA_REAL delwv = WEIGHT[k] * delwl * caArea(grid,k);
 
       // Get the minimum difference in water volume of the downstreams cell.
       mindelwv = caMinReal(mindelwv, delwv);
@@ -191,7 +196,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
       // overwriting the buffer, the outflux is positive otherwise is
       // negative.
       if(k > caUpdateEdges(grid))
-	flux=-flux;
+        flux=-flux;
 
       // Set flux into the edge buffer.
       caWriteEdgeBuffReal(grid,OUTF,k,flux);

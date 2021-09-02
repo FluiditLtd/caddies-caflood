@@ -174,8 +174,6 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 #include CA_2D_INCLUDE(velocityDiffusive)
 
 int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg, 
-		  const CA::ESRI_ASCIIGrid<CA::Real>& manning_grid,
-          const CA::ESRI_ASCIIGrid<CA::Real>& permeability_grid,
 	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
 	      const std::vector<IEvent>& ies,
 	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
@@ -303,12 +301,6 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
   // It contains a "real" value in each cell of the grid.
   CA::CellBuffReal  MANNING(GRID);
 
-  // Set the border of the Manning buffer to be no data.
-  MANNING.bordersValue(borders, manning_grid.nodata);
-
-  // Se the default value of the Manning to be the global Manning coefficient.
-  MANNING.fill(fulldomain, setup.roughness_global);
-
   // Load the data not from the Manning file but from the pre-processed file.
   if(!MANNING.loadData(setup.preproc_name+"_MANNING","0") )
     std::cerr<<"Error while loading the Manning pre-processed file"<<std::endl;
@@ -319,12 +311,6 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
   // Create the permeability cell buffer.
   // It contains a "real" value in each cell of the grid.
   CA::CellBuffReal  PERMEABILITY(GRID);
-
-  // Set the border of the elevation buffer to be no data.
-  PERMEABILITY.bordersValue(borders, manning_grid.nodata);
-
-  // Se the default value of the permeability to be 1.
-  PERMEABILITY.fill(fulldomain, 1.0);
 
   // Load the data not from the Manning file but from the pre-processed file.
   if(!PERMEABILITY.loadData(setup.preproc_name+"_PERMEABILITY","0") )
@@ -714,21 +700,21 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
       if(setup.check_vols == true)
       {
-	// Compute the total volume of water that is in the water
-	// depth (included the boundary cell).
-	WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
-	wd_volume *= GRID.area();
+        // Compute the total volume of water that is in the water
+        // depth (included the boundary cell).
+        WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
+        wd_volume *= GRID.area();
 
-	std::cout<<"Volume check:"<<std::endl;
-	std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
-		 <<" WD = "<<wd_volume<<std::endl;	
-	std::cout<<"-----------------" << std::endl; 
-      }
+        std::cout<<"Volume check:"<<std::endl;
+        std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
+            <<" WD = "<<wd_volume<<std::endl;	
+        std::cout<<"-----------------" << std::endl; 
+        }
 
-      if(setup.output_console && setup.output_computation)
-      {
-	std::cout<<"Partial run time taken (s) = " << total_timer.millisecond()/1000.0 << std::endl;
-	std::cout<<"-----------------" << std::endl; 
+        if(setup.output_console && setup.output_computation)
+        {
+        std::cout<<"Partial run time taken (s) = " << total_timer.millisecond()/1000.0 << std::endl;
+        std::cout<<"-----------------" << std::endl; 
       }
     }
 
@@ -764,8 +750,8 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       
       // Compute outflow using WCA2Dv1.
       // Check if there is an outflow in the border of the box.
-      CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF1, ELV, MANNING, WD, MASK, OUTFALARMS,
-			    ignore_wd, tol_delwl,dt);
+      CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF1, ELV, MANNING, PERMEABILITY, WD, MASK, OUTFALARMS,
+                    ignore_wd, tol_delwl,dt);
 
       break;
     case MODEL::WCA2Dv2:
@@ -773,7 +759,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       // This save a division operation for each cell.
       CA::Real ratio_dt = dt/previous_dt; 
       CA::Execute::function(compdomain, outflowWCA2Dv2, GRID, (*POUTF1), (*POUTF2),
-			    ELV, MANNING, PERMEABILITY, WD, MASK, OUTFALARMS, ignore_wd, tol_delwl,dt,ratio_dt);
+                    ELV, MANNING, PERMEABILITY, WD, MASK, OUTFALARMS, ignore_wd, tol_delwl,dt,ratio_dt);
 
       break;
     }
@@ -788,11 +774,11 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       // outflux on the border of the computational domain.
       if(OUTFALARMS.isActivated(0))
       {
-	// Set the computational domain to be the extend version and
-	// create the new extended one.
-	CA::Box extent(compdomain.extent());
-	compdomain.clear();
-	compdomain.add(extendBox(extent, fullbox,1));
+        // Set the computational domain to be the extend version and
+        // create the new extended one.
+        CA::Box extent(compdomain.extent());
+        compdomain.clear();
+        compdomain.add(extendBox(extent, fullbox,1));
       }  
     }
     
@@ -845,26 +831,26 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       // of water removed.
       if(useInfiltration)
       {
-	// Clear the angle.
-	A.clear();
+        // Clear the angle.
+        A.clear();
 
-	CA::Execute::function(fulldomain, infiltration, GRID, WD, MASK,A,inf_updatedt);
-	
-	if(setup.check_vols)
-	{
-	  // Retrieve the volume removed through infiltration
-	  CA::Real vol = 0;
-	  A.sequentialOp(seqdomain, vol, CA::Seq::Add);                
-	  inf_volume+=vol;
-	}
+        CA::Execute::function(fulldomain, infiltration, GRID, WD, MASK,A,inf_updatedt);
+        
+        if(setup.check_vols)
+        {
+        // Retrieve the volume removed through infiltration
+        CA::Real vol = 0;
+        A.sequentialOp(seqdomain, vol, CA::Seq::Add);                
+        inf_volume+=vol;
+        }
       }
 
       if(setup.ignore_upstream)
       {
-	// Deactivate the alarms checked during the velocity
-	// calculation.
-	VELALARMS.deactivateAll();
-	VELALARMS.set();
+        // Deactivate the alarms checked during the velocity
+        // calculation.
+        VELALARMS.deactivateAll();
+        VELALARMS.set();
       }
 
       // Lets make sure there are not any rounding errors.
@@ -886,32 +872,31 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       switch(setup.model_type)
       {
       case MODEL::WCA2Dv1:
-
-	// Clear the Velocity and angle.
-	V.clear();
-	A.clear();
-	
-	// Compute the velocity using the total outflux.
-	// Attention the tollerance is different here. 
-	// Check if there is water movement over the upstream elevation threshould.
-	CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, (*PTOT), MASK, VELALARMS,
-			      tol_va, period_time_dt, MANNING, upstr_elv);
-	
-	// CLear the total outflux.
-	(*PTOT).clear();
-	break;
+        // Clear the Velocity and angle.
+        V.clear();
+        A.clear();
+        
+        // Compute the velocity using the total outflux.
+        // Attention the tollerance is different here. 
+        // Check if there is water movement over the upstream elevation threshould.
+        CA::Execute::function(compdomain, velocityWCA2Dv1, GRID, V, A, WD, ELV, (*PTOT), MASK, VELALARMS,
+                    tol_va, period_time_dt, MANNING, upstr_elv);
+        
+        // CLear the total outflux.
+        (*PTOT).clear();
+        break;
 
       case MODEL::WCA2Dv2:
-	// Clear the Velocity and angle.
-	V.clear();
-	A.clear();
+        // Clear the Velocity and angle.
+        V.clear();
+        A.clear();
 
-	// Compute the velocity using the last outflux (OUTF2)
-	// Compute dt using Hunter formual
-	CA::Execute::function(compdomain, velocityDiffusive, GRID, V, A, (*PDT), 
-			      WD, ELV, (*POUTF2), MASK, VELALARMS,
-			      tol_va, tol_slope,dt,MANNING,upstr_elv);
-	break;
+        // Compute the velocity using the last outflux (OUTF2)
+        // Compute dt using Hunter formual
+        CA::Execute::function(compdomain, velocityDiffusive, GRID, V, A, (*PDT), 
+                    WD, ELV, (*POUTF2), MASK, VELALARMS,
+                    tol_va, tol_slope, dt, MANNING, upstr_elv);
+        break;
       }
 
       // Retrieve the maximum velocity 
@@ -929,40 +914,37 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       switch(setup.model_type)
       {
       case MODEL::WCA2Dv1:
-	//case MODEL::WCA2Dv2:
-	// Compute the possible next dt from the grid velocity and from
-	// the potential velocity fron an event.
-	// Use the minimum between dx and dy.
-	dtn1 = setup.time_maxdt;     
-	dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
-	dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
-	break;
+        // Compute the possible next dt from the grid velocity and from
+        // the potential velocity fron an event.
+        // Use the minimum between dx and dy.
+        dtn1 = setup.time_maxdt;     
+        dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
+        dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
+        break;
 
       case MODEL::WCA2Dv2:
+        dtn1 = setup.time_maxdt;     
+        // Retrieve the possible dt using the WCA2Dv2 diffusive formula.
+        // This is very similar to the LISFLOOD-FP diffusive formula.
+        (*PDT).sequentialOp(seqdomain, possible_dt,CA::Seq::Min);                
+        
+        // I Don't like using alpha. But at the moment this is the
+        // simplest way to find the potential inpact of events.
+        dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
 
-	dtn1 = setup.time_maxdt;     
-	// Retrieve the possible dt using the WCA2Dv2 diffusive formula.
-	// This is very similar to the LISFLOOD-FP diffusive formula.
-	(*PDT).sequentialOp(seqdomain, possible_dt,CA::Seq::Min);                
-	
-	// I Don't like using alpha. But at the moment this is the
-	// simplest way to find the potential inpact of events.
-	dtn1 = std::min(dtn1,alpha*GRID.length()/potential_va);
+        // Furthermore we are using alpha to keep a minimum time step
+        // depending on the velocity like in WCA2Dv1
+        dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
 
-	// Furthermore we are using alpha to keep a minimum time step
-	// depending on the velocity like in WCA2Dv1
-	dtn1 = std::min(dtn1,alpha*GRID.length()/grid_max_va);
+        //std::cerr<<"@@ PDT = "<<possible_dt <<" NDT = "<<dtn1<<" ST = "<<t/60<<" @@"<<std::endl;
 
-	//std::cerr<<"@@ PDT = "<<possible_dt <<" NDT = "<<dtn1<<" ST = "<<t/60<<" @@"<<std::endl;
+        // Use the possible dt and the dtn1 to find the time step.
+        dtn1 = std::min(dtn1,possible_dt);		
 
-	// Use the possible dt and the dtn1 to find the time step.
-	dtn1 = std::min(dtn1,possible_dt);		
-
-	// Reset the PDT.
-	//A.copy((*PDT)); 
-	(*PDT).fill(fulldomain, setup.time_updatedt);          
-	break;
-
+        // Reset the PDT.
+        //A.copy((*PDT)); 
+        (*PDT).fill(fulldomain, setup.time_updatedt);          
+        break;
       }
 
             	     
@@ -983,21 +965,21 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
       if(setup.ignore_upstream)
       {
-	// Check the ALARMS computed during the velocity step.
-	VELALARMS.get();
-	
-	// If the alarms one is not active, then there was not any cell
-	// which had the water level over the upstream elevation
-	// threshold and some flux at the same time. So we can remove
-	// the cell from the computation and then lower the upstream
-	// threshold.
-	// ATTENTION This action is performed only when all the events
-	// finished to add water to the domain.
-	if(!VELALARMS.isActivated(0) && t > t_end_events)
-	{
-	  CA::Execute::function(fulldomain, removeUpstr, GRID, MASK, ELV, upstr_elv);
-	  upstr_elv -= setup.upstream_reduction;
-	}
+        // Check the ALARMS computed during the velocity step.
+        VELALARMS.get();
+        
+        // If the alarms one is not active, then there was not any cell
+        // which had the water level over the upstream elevation
+        // threshold and some flux at the same time. So we can remove
+        // the cell from the computation and then lower the upstream
+        // threshold.
+        // ATTENTION This action is performed only when all the events
+        // finished to add water to the domain.
+        if(!VELALARMS.isActivated(0) && t > t_end_events)
+        {
+        CA::Execute::function(fulldomain, removeUpstr, GRID, MASK, ELV, upstr_elv);
+        upstr_elv -= setup.upstream_reduction;
+        }
       }
     } // COMPUTE NEXT DT.
 
@@ -1016,8 +998,8 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
     // Output raster grid. Keep track if the raster have been written.
     RGwritten = rg_manager.output(t, WD, V, A, setup.short_name, setup.output_console,
-				  (iter>=setup.time_maxiters-1 || t>=setup.time_end));
-	      
+                    (iter>=setup.time_maxiters-1 || t>=setup.time_end));
+
     // ---- END OF ITERATION ----
 
     // Increase time step (and output time step)
@@ -1056,7 +1038,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
       std::cout<<"Volume check:"<<std::endl;
       std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
-	       <<" WD = "<<wd_volume<<std::endl;	      
+               <<" WD = "<<wd_volume<<std::endl;	      
       std::cout<<"-----------------" << std::endl;  
     }
   }
@@ -1077,7 +1059,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
     std::cout<<"Simulation : "<<setup.sim_name<< std::endl;
     std::cout<<"Model      : "<<setup.model_type<< std::endl;
     std::cout<<"Date End   : "<<(now->tm_year + 1900)<<"-"<<(now->tm_mon + 1)<<'-'<<now->tm_mday
-	     <<" "<<now->tm_hour<<":"<<now->tm_min<<":"<<now->tm_sec << std::endl;
+             <<" "<<now->tm_hour<<":"<<now->tm_min<<":"<<now->tm_sec << std::endl;
     std::cout<<"------------------------------------------" << std::endl; 
   }
   
