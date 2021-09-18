@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include"Setup.hpp"
 #include"Rain.hpp"
 #include"Inflow.hpp"
+#include"CouplingManager.hpp"
 #include"WaterLevel.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"
@@ -175,7 +176,7 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 
 int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg, 
 	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
-	      const std::vector<IEvent>& ies,
+	      const std::vector<IEvent>& ies, const std::vector<ICoupling>& couplings,
 	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
 {
 
@@ -557,6 +558,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
   // cheking. WD is used as temporary buffer.
   if(setup.check_vols)
     inflow_manager.analyseArea(WD,MASK,fulldomain);
+
+  // ----  INIT COUPLING MANAGER ----
+  CouplingManager coupling_manager(GRID, couplings);
+  coupling_manager.createBoxes();
   
   // ----  INIT TIME PLOTS AND RASTER GRID ----
 
@@ -757,9 +762,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
     case MODEL::WCA2Dv2:
       // Compute outflow using WCA2Dv2.
       // This save a division operation for each cell.
-      CA::Real ratio_dt = dt/previous_dt; 
+      CA::Real ratio_dt = dt/previous_dt;       
       CA::Execute::function(compdomain, outflowWCA2Dv2, GRID, (*POUTF1), (*POUTF2),
-                    ELV, MANNING, PERMEABILITY, WD, MASK, OUTFALARMS, ignore_wd, tol_delwl,dt,ratio_dt);
+                    ELV, MANNING, PERMEABILITY, WD, MASK, OUTFALARMS,
+                    ignore_wd, tol_delwl, dt, ratio_dt);
 
       break;
     }
@@ -811,6 +817,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
     // Add the eventual inflow events.
     inflow_manager.add(WD,MASK,t,dt);
+
+    // Add the eventual coupling events.
+    coupling_manager.add(WD, MASK, t, dt);
 
     // Add the eventual water level events.
     wl_manager.add(WD,ELV,MASK,t,dt);
@@ -894,8 +903,8 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
         // Compute the velocity using the last outflux (OUTF2)
         // Compute dt using Hunter formual
         CA::Execute::function(compdomain, velocityDiffusive, GRID, V, A, (*PDT), 
-                    WD, ELV, (*POUTF2), MASK, VELALARMS,
-                    tol_va, tol_slope, dt, MANNING, upstr_elv);
+                    WD, ELV, MANNING, (*POUTF2), MASK, VELALARMS,
+                    tol_va, tol_slope, dt, upstr_elv);
         break;
       }
 
@@ -987,6 +996,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
          
     // Output time plots.
     tp_manager.output(t, iter, WD, V, setup.output_console);
+    coupling_manager.output(t, WD, ELV);
 
     // Check if we need to update the peak at every time step.
     if(setup.update_peak_dt)

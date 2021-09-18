@@ -28,11 +28,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 // ATTENTION, This version uses the inverse roughness
 
 CA_FUNCTION velocityDiffusive(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_REAL_IO A,  CA_CELLBUFF_REAL_IO DT,
-                CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, 
+                CA_CELLBUFF_REAL_I WD, CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING,
                 CA_EDGEBUFF_REAL_IO OUTF, 
                 CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
                 CA_GLOB_REAL_I tol_wd, CA_GLOB_REAL_I tol_slope, 
-                CA_GLOB_REAL_I prev_dt, CA_CELLBUFF_REAL_I MANNING,
+                CA_GLOB_REAL_I prev_dt, 
                 CA_GLOB_REAL_I upstr_elv)
 {
   // Initialise the grid
@@ -168,7 +168,6 @@ CA_FUNCTION velocityDiffusive(CA_GRID grid, CA_CELLBUFF_REAL_IO V, CA_CELLBUFF_R
   // the alarm.
   if(totflux>0.0 && WLA[0]>upstr_elv)
   {
-    caActivateAlarm(grid, ALARMS,0);    
+    caActivateAlarm(grid, ALARMS, 0);
   }
-
 }

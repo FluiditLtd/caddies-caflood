@@ -206,6 +206,7 @@ CA_FUNCTION outflowWCA2Dv1(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF,
   // If the code reach here mean that there is an outflux.  Check if
   // the cell is in the border of the box and if it is the case set an
   // alarm.
-  if(caBoxStatus(grid)>0)
+  if(caBoxStatus(grid)>0) {
     caActivateAlarm(grid, ALARMS,0);
+  }
 }

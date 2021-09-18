@@ -23,30 +23,37 @@ THE SOFTWARE.
 
 */
 
-// Add the volume of water from an inflow event to the water depth.
+// Add the volume of water from an inflow event or from coupling flows to the water depth.
 CA_FUNCTION addInflow(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_STATE_I MASK, 
 		      CA_GLOB_REAL_I volume)
 {
   // Initialise the grid
   CA_GRID_INIT(grid);
 
+  // Nothing to do if the volume is 0
+  if (volume == 0.0)
+      return;
+
   // Retrive the water depth 
-  CA_REAL  wd    = caReadCellBuffReal(grid,WD,0);
+  CA_REAL  wd    = caReadCellBuffReal(grid, WD, 0);
 
   // Retrive the area of the main cell.
-  CA_REAL  area = caArea(grid,0);
+  CA_REAL  area = caArea(grid, 0);
 
   // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
+  CA_STATE mask  = caReadCellBuffState(grid, MASK, 0);
 
   // Read bit 0  (false the main cell has nodata)
-  CA_STATE bit0  = caReadBitsState(mask,0,1);
+  CA_STATE bit0  = caReadBitsState(mask, 0, 1);
 
   // If the main cell has no data. Do
   // nothing.
   if(bit0 == 0)
     return;
 
+  // Compute the amount of water to add or remove.  
+  CA_REAL  newLevel = caMaxReal(0, wd + (volume / area));
+  
   // Update the water depth.
-  caWriteCellBuffReal(grid,WD,wd+(volume/area));
+  caWriteCellBuffReal(grid, WD, newLevel);
 }

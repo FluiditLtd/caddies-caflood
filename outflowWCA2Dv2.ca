@@ -38,6 +38,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 
 // ATTENTION, This version uses the inverse roughness 
 
+
+/*CA::Execute::function<CA::quadro<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, cl::Program, cl::NDRange>& (), CA::EdgeBuffReal, CA::EdgeBuffReal, CA::CellBuffReal, CA::CellBuffReal, CA::CellBuffReal, CA::CellBuffReal, CA::CellBuffState, CA::Alarms, float, float, float, float>
+*/
 CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_REAL_I OUTF2,
 			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING,
                CA_CELLBUFF_REAL_I PERMEABILITY, CA_CELLBUFF_REAL_I WD, 
@@ -220,9 +223,9 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
         // If the code reach here mean that there is an outflux.  Check if
         // the cell is in the border of the box and if it is the case set an
         // alarm.
-        if(caBoxStatus(grid) > 0)
+        if(caBoxStatus(grid) > 0) {
             caActivateAlarm(grid, ALARMS, 0);  
+        }
     } // totalw zero
-  } // Now water or no data cell.
-  
+  } // Now water or no data cell.  
 }

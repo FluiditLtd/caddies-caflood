@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include"Setup.hpp"
 #include"Rain.hpp"
 #include"Inflow.hpp"
+#include"CouplingManager.hpp"
 #include"WaterLevel.hpp"
 #include"TimePlot.hpp"
 #include"RasterGrid.hpp"
@@ -45,6 +46,10 @@ THE SOFTWARE.
 // manage the power settings.
 #if defined _WIN32 || defined __CYGWIN__   
 #include<windows.h>
+#endif
+
+#ifdef _OPEMP
+#include <omp>
 #endif
 
 //! Print the version info to std output.
@@ -97,7 +102,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
         //const CA::ESRI_ASCIIGrid<CA::Real>& manning_grid, 
         //const CA::ESRI_ASCIIGrid<CA::Real>& permeability_grid, 
         const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
-        const std::vector<IEvent>& ies, 
+        const std::vector<IEvent>& ies, const std::vector<ICoupling>& couplings,
         const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
 
 
@@ -109,6 +114,10 @@ int terrainInfo(const ArgsData& ad,Setup& setup, const CA::ESRI_ASCIIGrid<CA::Re
 
 int main(int argc, char* argv[])
 {
+#ifdef _OPENMP
+         omp_set_num_threads(omp_get_max_threads());
+#endif
+
 #if defined _WIN32 || defined __CYGWIN__   
   // Stop WINDOWS from going to sleep!
   SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED );
@@ -472,6 +481,24 @@ int main(int argc, char* argv[])
   } 
 
   if(ad.info)
+    std::cout<<std::endl<<"Load coupling inputs configuration "<<std::endl;
+
+  // Load any eventual inflow events
+  std::vector<ICoupling> couplings; 
+  for(size_t i = 0; i< setup.coupling_files.size(); ++i)
+  {
+    std::string file = ad.working_dir+ad.sdir+setup.coupling_files[i]; 
+
+    ICoupling coupling;
+
+    if(initICouplingsFromCSV(file, couplings)!=0)
+    {
+      std::cerr<<"Error reading couplings CSV file: "<<file<<std::endl;
+      return EXIT_FAILURE;    
+    }
+  } 
+
+  if(ad.info)
     std::cout<<std::endl<<"Load time plot outputs configuration "<<std::endl;
 
   // Load any eventual time plots.
@@ -540,8 +567,8 @@ int main(int argc, char* argv[])
   // Variable that indicate that something was done.
   bool work_done=false;
 
-  try
-  {
+  //try
+  //{
     //! Now perform the pre-processing
     if(ad.pre_proc && !ad.no_pre_proc)
     {
@@ -589,7 +616,7 @@ int main(int argc, char* argv[])
       if(ad.info)
 	std::cout<<std::endl<<"Starting CADDIES2D flood modelling using "<<setup.model_type<<" model"<<std::endl;
 
-      if(CADDIES2D(ad,setup,eg,res,wles,ies,tps,rgs)!=0)
+      if(CADDIES2D(ad, setup, eg, res, wles, ies, couplings, tps, rgs)!=0)
       {
 	std::cerr<<"Error while performing CADDIES2D flood modelling"<<std::endl;
 	return EXIT_FAILURE;    
@@ -631,13 +658,13 @@ int main(int argc, char* argv[])
       std::cout<<"Press 'Return' to continue"<<std::endl;
       return EXIT_FAILURE;    
     }
-  }
-  catch(std::exception& e)
-  {
-    std::cerr<<e.what()<<std::endl;
-    std::cout<<"Simulation stopped"<<std::endl;
-    return EXIT_FAILURE;    
-  }
+  //}
+  //catch(std::exception& e)
+ // {
+  //  std::cerr<<e.what()<<std::endl;
+ //   std::cout<<"Simulation stopped"<<std::endl;
+ //   return EXIT_FAILURE;    
+ // }
   // Close the caAPI.
   CA::finalise2D();
 
