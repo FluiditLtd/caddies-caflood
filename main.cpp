@@ -48,14 +48,14 @@ THE SOFTWARE.
 #include<windows.h>
 #endif
 
-#ifdef _OPEMP
-#include <omp>
+#ifdef _OPENMP
+#include <omp.h>
 #endif
 
 //! Print the version info to std output.
 inline void version()
 {
- std::cout<<"Copyright 2013–2021 Centre for Water Systems, University of Exeter & Fluidit Ltd."<<std::endl;
+ std::cout<<"Copyright 2013–2021 University of Exeter & Fluidit Ltd."<<std::endl;
  std::cout<<"App                  : "<<CA_QUOTE_MACRO(CAAPI_APP_NAME)<<" ver. "<<CAAPI_APP_VERSION<<std::endl;
  std::cout<<"CA API Version       : "<<caVersion<<std::endl;
  std::cout<<"       Impl Name     : "<<caImplName<<std::endl;
@@ -102,7 +102,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
         //const CA::ESRI_ASCIIGrid<CA::Real>& manning_grid, 
         //const CA::ESRI_ASCIIGrid<CA::Real>& permeability_grid, 
         const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
-        const std::vector<IEvent>& ies, const std::vector<ICoupling>& couplings,
+        const std::vector<IEvent>& ies, std::vector<ICoupling>& couplings,
         const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs);
 
 

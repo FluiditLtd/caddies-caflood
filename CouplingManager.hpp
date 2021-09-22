@@ -30,8 +30,8 @@ public:
   CA::Real       head;      //!< CAFLOOD simulated head
   CA::Real       flow;      //!< Net flow calculated by the hydraulic simulator (+ to surface, - to network)
   CA::Real       prevFlow;  //!< Net flow calculated by the hydraulic simulator (+ to surface, - to network)
-  CA::Box        box_area;  //!< The box of the area where the flow is set.  
-  
+  CA::Box        box_area;  //!< The box of the area where the flow is set.
+
   ICoupling():
       box_area(CA::Box::Empty()) {
   }
@@ -61,6 +61,7 @@ private:
 
   CA::Real readValuesUntil;
   CA::Real previousValuesUntil;
+  CA::Real networkWaitingUntil;
   bool inputEnded = false;
 
 public:
@@ -71,6 +72,7 @@ public:
     void input(CA::Real t);
     void output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffReal& ELV);
     void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt);
+    void end();
 };
 
 #endif

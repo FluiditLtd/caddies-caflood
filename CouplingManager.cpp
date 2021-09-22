@@ -74,7 +74,8 @@ CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupl
   grid(GRID),
   coupling(aCoupling),
   readValuesUntil(0),
-  previousValuesUntil(0) {
+  previousValuesUntil(0),
+  networkWaitingUntil(-1) {
 
 
 }
@@ -86,14 +87,32 @@ CouplingManager::~CouplingManager() {
 
 void CouplingManager::input(CA::Real time) {
     // Nothing to do as there are enough data
-    if (readValuesUntil >= time || inputEnded)
+    if (readValuesUntil >= time || inputEnded || coupling.empty())
         return;
 
-    while (readValuesUntil < time && !inputEnded && !std::cin.eof()) {    
+    // There won't be anything input, if the network simulator
+    // is waiting for values after the current time.
+    if (networkWaitingUntil > time)
+        return;
+
+    // Inform the other end, that we are actually waiting to get some values in
+    std::cerr << "WAITING," << time << "\n";
+
+    while (readValuesUntil < time && !inputEnded && !std::cin.eof()) {
         std::vector<std::string> tokens( CA::getLineTokens(std::cin, ',') );
         if (tokens.size() > 0) {
             if (tokens[0] == "END") {
                 inputEnded = true;
+            }
+            else if (tokens[0] == "WAITING") {
+                CA::Real newTime;
+                if (!CA::fromString(newTime, tokens[1]))
+                    continue;
+
+                if (newTime > time) {
+                    networkWaitingUntil = newTime;
+                    break;
+                }
             }
             else if (tokens[0] == "FLOW") {
                 CA::Real newTime;
@@ -118,10 +137,14 @@ void CouplingManager::input(CA::Real time) {
 
 
 void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffReal& ELV) {
-    if (coupling.size() == 0)
+    if (coupling.empty())
         return;
-    
-    std::cout << "HEAD," << time;
+
+    // No need to output values if nobody is going to use them
+    if (time < networkWaitingUntil)
+        return;
+
+    std::cerr << "HEAD," << time;
   
     for (auto iter = coupling.begin(); iter != coupling.end(); iter++) {
         auto& point = *iter;
@@ -131,20 +154,24 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
         // Retrieve the data from the CellBUff into the temporary buffer.
         WD.retrieveData(point.box_area, &depth, 1, 1);
         ELV.retrieveData(point.box_area, &elevation, 1, 1);
-        std::cout << "," << (depth + elevation);
+        std::cerr << "," << (depth + elevation);
     }
-    std::cout<<std::endl;
+    std::cerr << "\n";
 }
 
 void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt)
 {
   // Loop through the couplings
-  for(size_t i = 0; i<coupling.size(); ++i)
+  for(size_t i = 0; i < coupling.size(); ++i)
   {
     // Compute the inflow volume at specific time using
     // interpolation. Check if the index is the last available
     // one, then there is no inflow.
-    CA::Real volume = coupling[i].flow * dt;
+    CA::Real volume;
+    if (t < readValuesUntil)
+        volume = coupling[i].prevFlow * dt;
+    else
+        volume = coupling[i].flow * dt;
 
     // Add (or subtract) the given volume into the water detph of the
     // given area.
@@ -165,5 +192,11 @@ void CouplingManager::createBoxes()
         CA::Point     tl( CA::Point::create(grid, item.x, item.y) );
         item.box_area = CA::Box(tl.x(), tl.y(), 1, 1);
         std::cout<<item.name<< " " << item.x << " " << item.y << " box: " << item.box_area.x() << " " << item.box_area.y() << " "  << item.box_area.w() << " " << item.box_area.h() << std::endl;
-    }    
+    }
+}
+
+void CouplingManager::end() {
+    if (coupling.size() > 0) {
+        std::cerr << "END\n";
+    }
 }

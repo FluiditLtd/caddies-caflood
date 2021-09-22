@@ -176,7 +176,7 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 
 int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<CA::Real>& eg, 
 	      const std::vector<RainEvent>& res, const std::vector<WLEvent>& wles, 
-	      const std::vector<IEvent>& ies, const std::vector<ICoupling>& couplings,
+	      const std::vector<IEvent>& ies, std::vector<ICoupling>& couplings,
 	      const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
 {
 
@@ -829,7 +829,13 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
     // Update previous dt
     previous_dt = dt;
 
-    // Check if the dt need to be re-computed.
+      // Output & input the coupling data
+      coupling_manager.output(t, WD, ELV);
+      if (t < setup.time_end)
+          coupling_manager.input(t);
+
+
+      // Check if the dt need to be re-computed.
     if(t>=time_dt || --iter_dt==0)
     {   
       // Reset the start of updatedt.
@@ -956,7 +962,6 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
         break;
       }
 
-            	     
       // Compute the next time step as a fraction fo the period time step.
       // Check that dt is between  min max.
       computeDT(dt,dtfrac,dtn1,setup);
@@ -996,7 +1001,6 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
          
     // Output time plots.
     tp_manager.output(t, iter, WD, V, setup.output_console);
-    coupling_manager.output(t, WD, ELV);
 
     // Check if we need to update the peak at every time step.
     if(setup.update_peak_dt)
@@ -1015,7 +1019,9 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
     // Increase time step (and output time step)
     iter++;    
     oiter++;
-  }  
+  }
+
+  coupling_manager.end();
 
   // --- END OF MAIN LOOP ---
 
