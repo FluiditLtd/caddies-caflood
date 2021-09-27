@@ -154,7 +154,7 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
         // Retrieve the data from the CellBUff into the temporary buffer.
         WD.retrieveData(point.box_area, &depth, 1, 1);
         ELV.retrieveData(point.box_area, &elevation, 1, 1);
-        std::cerr << "," << (depth + elevation);
+        std::cerr << "," << depth << "," << (depth + elevation);
     }
     std::cerr << "\n";
 }
