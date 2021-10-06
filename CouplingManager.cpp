@@ -97,6 +97,7 @@ void CouplingManager::input(CA::Real time) {
 
     // Inform the other end, that we are actually waiting to get some values in
     std::cerr << "WAITING," << time << "\n";
+    std::cerr.flush();
 
     while (readValuesUntil < time && !inputEnded && !std::cin.eof()) {
         std::vector<std::string> tokens( CA::getLineTokens(std::cin, ',') );
@@ -157,6 +158,7 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
         std::cerr << "," << depth << "," << (depth + elevation);
     }
     std::cerr << "\n";
+    std::cerr.flush();
 }
 
 void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt)
@@ -198,5 +200,6 @@ void CouplingManager::createBoxes()
 void CouplingManager::end() {
     if (coupling.size() > 0) {
         std::cerr << "END\n";
+        std::cerr.flush();
     }
 }
