@@ -671,7 +671,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
   }
 
   // ------------------------- MAIN LOOP -------------------------------
-  while(iter<setup.time_maxiters && t<setup.time_end)
+  while(iter<setup.time_maxiters && t<setup.time_end && !coupling_manager.isStopped())
   {
     // Set this to false. This will be set to the righ value during an
     // update step or before the update itself.

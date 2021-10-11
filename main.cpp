@@ -29,7 +29,7 @@ THE SOFTWARE.
 //! contact: m.guidolin [at] exeter.ac.uk
 //! \date 2013-03
 
-
+#define CL_HPP_TARGET_OPENCL_VERSION 120 
 #include"ca2D.hpp"
 #include"Arguments.hpp"
 #include"Options.hpp"

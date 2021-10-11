@@ -63,11 +63,13 @@ private:
   CA::Real previousValuesUntil;
   CA::Real networkWaitingUntil;
   bool inputEnded = false;
+  bool stopped = false;
 
 public:
     CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling);
     ~CouplingManager();
-    
+
+    inline bool isStopped() { return stopped; }
     void createBoxes();
     void input(CA::Real t);
     void output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffReal& ELV);

@@ -102,6 +102,12 @@ void CouplingManager::input(CA::Real time) {
         if (tokens.size() > 0) {
             if (tokens[0] == "END") {
                 inputEnded = true;
+                break;
+            }
+            else if (tokens[0] == "STOP") {
+                inputEnded = true;
+                stopped = true;
+                break;
             }
             else if (tokens[0] == "WAITING") {
                 CA::Real newTime;
