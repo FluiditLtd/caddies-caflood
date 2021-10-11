@@ -76,8 +76,6 @@ CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupl
   readValuesUntil(0),
   previousValuesUntil(0),
   networkWaitingUntil(-1) {
-
-
 }
 
 CouplingManager::~CouplingManager() {
@@ -92,14 +90,14 @@ void CouplingManager::input(CA::Real time) {
 
     // There won't be anything input, if the network simulator
     // is waiting for values after the current time.
-    if (networkWaitingUntil > time)
+    if (networkWaitingUntil >= time)
         return;
 
     // Inform the other end, that we are actually waiting to get some values in
-    std::cerr << "WAITING," << time << "\n";
-    std::cerr.flush();
+    std::cout << "WAITING," << time << std::endl;
+    std::cout.flush();
 
-    while (readValuesUntil < time && !inputEnded && !std::cin.eof()) {
+    while (readValuesUntil < time && !inputEnded && std::cin.good() && !std::cin.eof()) {
         std::vector<std::string> tokens( CA::getLineTokens(std::cin, ',') );
         if (tokens.size() > 0) {
             if (tokens[0] == "END") {
@@ -108,12 +106,11 @@ void CouplingManager::input(CA::Real time) {
             else if (tokens[0] == "WAITING") {
                 CA::Real newTime;
                 if (!CA::fromString(newTime, tokens[1]))
-                    continue;
-
-                if (newTime > time) {
-                    networkWaitingUntil = newTime;
                     break;
-                }
+
+                networkWaitingUntil = newTime;
+                if (newTime >= time)
+                    break;
             }
             else if (tokens[0] == "FLOW") {
                 CA::Real newTime;
@@ -145,7 +142,7 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
     if (time < networkWaitingUntil)
         return;
 
-    std::cerr << "HEAD," << time;
+    std::cout << "HEAD," << time;
   
     for (auto iter = coupling.begin(); iter != coupling.end(); iter++) {
         auto& point = *iter;
@@ -155,10 +152,10 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
         // Retrieve the data from the CellBUff into the temporary buffer.
         WD.retrieveData(point.box_area, &depth, 1, 1);
         ELV.retrieveData(point.box_area, &elevation, 1, 1);
-        std::cerr << "," << depth << "," << (depth + elevation);
+        std::cout << "," << depth << "," << (depth + elevation);
     }
-    std::cerr << "\n";
-    std::cerr.flush();
+    std::cout << std::endl;
+    std::cout.flush();
 }
 
 void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt)
@@ -199,7 +196,7 @@ void CouplingManager::createBoxes()
 
 void CouplingManager::end() {
     if (coupling.size() > 0) {
-        std::cerr << "END\n";
-        std::cerr.flush();
+        std::cout << "END" << std::endl;
+        std::cout.flush();
     }
 }
