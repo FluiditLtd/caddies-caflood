@@ -121,6 +121,12 @@ int main(int argc, char* argv[])
 #if defined _WIN32 || defined __CYGWIN__   
   // Stop WINDOWS from going to sleep!
   SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED );
+  // Set the stdin to binary mode.
+
+  HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+  HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+  SetConsoleMode(hInput, 0);
+  SetConsoleMode(hOutput, 0);
 #endif
 
   // Do not sync with stdio
