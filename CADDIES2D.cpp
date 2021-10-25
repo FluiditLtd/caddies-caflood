@@ -560,7 +560,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
     inflow_manager.analyseArea(WD,MASK,fulldomain);
 
   // ----  INIT COUPLING MANAGER ----
-  CouplingManager coupling_manager(GRID, couplings);
+  CouplingManager coupling_manager(GRID, couplings, setup.time_start, setup.time_end);
   coupling_manager.createBoxes();
   
   // ----  INIT TIME PLOTS AND RASTER GRID ----
@@ -614,9 +614,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
   // Find the possible velocity caused by the events.
   potential_va = 0.0;
-  potential_va = std::max( potential_va, rain_manager  .potentialVA(t,period_time_dt) );
-  potential_va = std::max( potential_va, inflow_manager.potentialVA(t,period_time_dt) );
-  potential_va = std::max( potential_va, wl_manager    .potentialVA(t,period_time_dt) );
+  potential_va = std::max( potential_va, rain_manager    .potentialVA(t,period_time_dt) );
+  potential_va = std::max( potential_va, inflow_manager  .potentialVA(t,period_time_dt) );
+  potential_va = std::max( potential_va, wl_manager      .potentialVA(t,period_time_dt) );
+  potential_va = std::max( potential_va, coupling_manager.potentialVA(t,period_time_dt) );
 
   switch(setup.model_type)
   {
@@ -651,6 +652,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
   t_end_events = std::max(t_end_events, rain_manager.endTime());
   t_end_events = std::max(t_end_events, inflow_manager.endTime());
   t_end_events = std::max(t_end_events, wl_manager.endTime());
+  t_end_events = std::max(t_end_events, coupling_manager.endTime());
 
   if(setup.output_console)
   {
@@ -922,9 +924,10 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
       // Find the possible velocity caused by the events.
       potential_va = 0.0;
-      potential_va = std::max(potential_va, rain_manager  .potentialVA(t,period_time_dt) );
-      potential_va = std::max(potential_va, inflow_manager.potentialVA(t,period_time_dt) );
-      potential_va = std::max(potential_va, wl_manager    .potentialVA(t,period_time_dt) );
+      potential_va = std::max(potential_va, rain_manager    .potentialVA(t,period_time_dt) );
+      potential_va = std::max(potential_va, inflow_manager  .potentialVA(t,period_time_dt) );
+      potential_va = std::max(potential_va, wl_manager      .potentialVA(t,period_time_dt) );
+      potential_va = std::max(potential_va, coupling_manager.potentialVA(t,period_time_dt) );
 
       switch(setup.model_type)
       {

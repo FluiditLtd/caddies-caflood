@@ -70,9 +70,11 @@ int initICouplingsFromCSV(const std::string& filename, std::vector<ICoupling>& c
 }
 
 
-CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling):
+CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling, CA::Real aTime_start, CA::Real aTime_end):
   grid(GRID),
   coupling(aCoupling),
+  time_start(aTime_start),
+  time_end(aTime_end),
   readValuesUntil(0),
   previousValuesUntil(0),
   networkWaitingUntil(-1) {
@@ -205,4 +207,31 @@ void CouplingManager::end() {
         std::cout << "END" << std::endl;
         std::cout.flush();
     }
+}
+
+CA::Real CouplingManager::potentialVA(CA::Real t, CA::Real period_time_dt)
+{
+    CA::Real potential_va = 0.0;
+
+    for (auto iter = coupling.begin(); iter != coupling.end(); iter++)
+    {
+        auto& item = *iter;
+        CA::Real volume = item.flow * period_time_dt;
+        CA::Real wd = volume / grid.length() / grid.length();
+
+        // Compute the potential velocity.
+        potential_va = std::max(potential_va, std::sqrt(wd * static_cast<CA::Real>(9.81)));
+    }
+
+    // ATTENTION! This does not need to be precise but just give a rough estimation
+    return potential_va;
+}
+
+
+CA::Real CouplingManager::endTime()
+{
+    if (coupling.size() == 0)
+        return time_start;
+    else
+        return time_end;
 }

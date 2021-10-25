@@ -59,6 +59,8 @@ private:
   //! Reference to the List of inflow events
   std::vector<ICoupling>& coupling;
 
+  CA::Real time_start;
+  CA::Real time_end;
   CA::Real readValuesUntil;
   CA::Real previousValuesUntil;
   CA::Real networkWaitingUntil;
@@ -66,7 +68,7 @@ private:
   bool stopped = false;
 
 public:
-    CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling);
+    CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling, CA::Real time_start, CA::Real time_end);
     ~CouplingManager();
 
     inline bool isStopped() { return stopped; }
@@ -75,6 +77,9 @@ public:
     void output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffReal& ELV);
     void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt);
     void end();
+
+    CA::Real potentialVA(CA::Real t, CA::Real period_time_dt);
+    CA::Real endTime();
 };
 
 #endif
