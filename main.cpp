@@ -127,11 +127,19 @@ int main(int argc, char* argv[])
   HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
   SetConsoleMode(hInput, 0);
   SetConsoleMode(hOutput, 0);
-#endif
 
+  setvbuf(stdout, (char*)NULL, _IONBF, 0);
+  setvbuf(stdin, (char*)NULL, _IONBF, 0);
+
+  // Sync with stdio
+  std::cout.sync_with_stdio(true);
+  std::cerr.sync_with_stdio(true);
+#else
   // Do not sync with stdio
   std::cout.sync_with_stdio(false);
   std::cerr.sync_with_stdio(false);
+#endif
+
 
   // Initialise the 2D caAPI.
   CA::init2D(&argc,&argv);
