@@ -87,7 +87,7 @@ CouplingManager::~CouplingManager() {
 
 void CouplingManager::input(CA::Real time) {
     // Nothing to do as there are enough data
-    if (readValuesUntil >= time || inputEnded || coupling.empty())
+    if (readValuesUntil >= time || inputEnded || stopped || coupling.empty())
         return;
 
     // There won't be anything input, if the network simulator
@@ -143,7 +143,7 @@ void CouplingManager::input(CA::Real time) {
 
 
 void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffReal& ELV) {
-    if (coupling.empty())
+    if (coupling.empty() || stopped || inputEnded)
         return;
 
     // No need to output values if nobody is going to use them
@@ -203,7 +203,7 @@ void CouplingManager::createBoxes()
 }
 
 void CouplingManager::end() {
-    if (coupling.size() > 0) {
+    if (coupling.size() > 0 && !inputEnded && !stopped) {
         std::cout << "END" << std::endl;
         std::cout.flush();
     }
