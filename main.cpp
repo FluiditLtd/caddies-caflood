@@ -170,6 +170,8 @@ int main(int argc, char* argv[])
   ad.args.add(na++,"WCA2D",       "Perform the WCA2D flood model (deprecated)",            "",  true, false);
   ad.args.add(na++,"sim",         "Perform the flood model simulation",                    "",  true, false);
   ad.args.add(na++,"terrain-info","Display the terrain info and exit.", "",  true, false, false);
+  ad.args.add(na++,"port",        "Local TCP/IP port number to connect for coupling",       "-1",  true, true);
+
   // Add the options from the CA implementation
   ad.args.addList(CA::options());
 
@@ -247,6 +249,11 @@ int main(int argc, char* argv[])
     {
       ad.pre_proc = true;
       ad.terrain_info = true;
+    }
+
+    if((*i)->name == "port")
+    {
+      ad.port = std::stoi((*i)->value);
     }
   }
 

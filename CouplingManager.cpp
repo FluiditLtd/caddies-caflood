@@ -13,6 +13,16 @@
 #include <fstream>
 #include CA_2D_INCLUDE(addInflow)
 
+#ifdef _WIN32
+#include <winsock.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
+
 //! Define a small inflow to ignore.
 #define SMALL_INFLOW  1.E-10
 
@@ -70,61 +80,133 @@ int initICouplingsFromCSV(const std::string& filename, std::vector<ICoupling>& c
 }
 
 
-CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling, CA::Real aTime_start, CA::Real aTime_end):
+CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling, CA::Real aTime_start, CA::Real aTime_end, int aPort):
   grid(GRID),
   coupling(aCoupling),
   time_start(aTime_start),
   time_end(aTime_end),
+  port(aPort),
   readValuesUntil(0),
   previousValuesUntil(0),
-  networkWaitingUntil(-1) {
+  networkWaitingUntil(-1),
+  sockfd(0) {
+
+    if (port > 0) {
+#ifdef _WIN32
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
+            std::cerr << "Error in WSAStartup" << std::endl;
+            throw;
+        }
+#endif
+
+        sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sockaddr_in addr;
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        if (connect(sockfd, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr)) != 0) {
+            std::cerr << "Cannot connect to the coupling host at 127.0.0.1:" << port << std::endl;
+#ifdef _WIN32
+        closesocket(sockfd);
+#endif
+            throw;
+        }
+    }
 }
 
 CouplingManager::~CouplingManager() {
 	
 }
 
+void CouplingManager::write(std::string line) {
+    if (port <= 0) {
+        std::cout << line;
+        std::cout.flush();
+    }
+    else {
+        const char *data = line.c_str();
+        int length = line.length();
+        int pos = 0;
+        while (length > 0) {
+            int bytes = send(sockfd, &data[pos], length, 0);
+            if (bytes >= 0) {
+                pos += bytes;
+                length -= bytes;
+            }
+            else
+                break;
+        }
+    }
+}
+
+std::string CouplingManager::read() {
+    if (port <= 0) {
+        if (!std::cin.good() || std::cin.eof())
+            return "";
+
+        std::string line;
+        std::getline(std::cin, line, '\n');
+        return line;
+    }
+    else {
+        std::stringstream line("");
+        char c;
+        int len;
+        len = recv(sockfd, &c, 1, 0);
+        while (len > 0 && c != '\n') {
+            line << c;
+            len = recv(sockfd, &c, 1, 0);
+        }
+        return line.str();
+    }
+}
 
 void CouplingManager::input(CA::Real time) {
     // Nothing to do as there are enough data
-    if (readValuesUntil >= time || inputEnded || stopped || coupling.empty())
+    if (readValuesUntil >= time - 0.0001 || inputEnded || stopped || coupling.empty())
         return;
 
     // There won't be anything input, if the network simulator
     // is waiting for values after the current time.
-    if (networkWaitingUntil >= time)
+    if (networkWaitingUntil >= time - 0.001)
         return;
 
     // Inform the other end, that we are actually waiting to get some values in
-    std::cout << "WAITING," << time << std::endl;
-    std::cout.flush();
+    std::stringstream line("");
 
-    while (readValuesUntil < time && !inputEnded && std::cin.good() && !std::cin.eof()) {
-        std::vector<std::string> tokens( CA::getLineTokens(std::cin, ',') );
+    line << "WAITING," << time << "\n";
+    write(line.str());
+
+    std::string readLine = "";
+    do {
+        readLine = read();
+        std::stringstream readLineStream(readLine);
+        std::vector<std::string> tokens(CA::getLineTokens(readLineStream, ','));
         if (tokens.size() > 0) {
             if (tokens[0] == "END") {
                 inputEnded = true;
                 break;
-            }
-            else if (tokens[0] == "STOP") {
+            } else if (tokens[0] == "STOP") {
                 inputEnded = true;
                 stopped = true;
                 break;
-            }
-            else if (tokens[0] == "WAITING") {
+            } else if (tokens[0] == "WAITING") {
                 CA::Real newTime;
                 if (!CA::fromString(newTime, tokens[1]))
                     break;
 
                 networkWaitingUntil = newTime;
-                if (newTime >= time)
+                if (newTime > readValuesUntil)
+                    readValuesUntil = newTime;
+
+                if (newTime >= time - 0.0001)
                     break;
-            }
-            else if (tokens[0] == "FLOW") {
+            } else if (tokens[0] == "FLOW") {
                 CA::Real newTime;
                 previousValuesUntil = readValuesUntil;
                 if (!CA::fromString(newTime, tokens[1]))
-                        continue;
+                    continue;
 
                 readValuesUntil = newTime;
 
@@ -138,7 +220,7 @@ void CouplingManager::input(CA::Real time) {
                 }
             }
         }
-    }
+    } while (readValuesUntil < time - 0.0001 && !inputEnded && !readLine.empty());
 }
 
 
@@ -150,8 +232,9 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
     if (time < networkWaitingUntil)
         return;
 
-    std::cout << "HEAD," << time;
-  
+    std::stringstream line("");
+    line << "HEAD," << time;
+
     for (auto iter = coupling.begin(); iter != coupling.end(); iter++) {
         auto& point = *iter;
         CA::Real depth;
@@ -160,10 +243,10 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
         // Retrieve the data from the CellBUff into the temporary buffer.
         WD.retrieveData(point.box_area, &depth, 1, 1);
         ELV.retrieveData(point.box_area, &elevation, 1, 1);
-        std::cout << "," << depth << "," << (depth + elevation);
+        line << "," << depth << "," << (depth + elevation);
     }
-    std::cout << std::endl;
-    std::cout.flush();
+    line << "\n";
+    write(line.str());
 }
 
 void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt)
@@ -204,8 +287,12 @@ void CouplingManager::createBoxes()
 
 void CouplingManager::end() {
     if (coupling.size() > 0 && !inputEnded && !stopped) {
-        std::cout << "END" << std::endl;
-        std::cout.flush();
+        write("END\n");
+#ifdef _WIN32
+        closesocket(sockfd);
+#else
+        close(sockfd);
+#endif
     }
 }
 

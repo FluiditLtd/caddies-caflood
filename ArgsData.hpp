@@ -122,6 +122,9 @@ struct ArgsData
   //! If true, display the terrrain info and exit.
   bool terrain_info;
 
+  //! TCP/IP port to connect to.
+  int port;
+
   // Constructor
   ArgsData():
 #if defined _WIN32 || defined __CYGWIN__   
@@ -141,7 +144,8 @@ struct ArgsData
     no_pre_proc(false),
     post_proc(false),
     model(),
-    terrain_info(false)
+    terrain_info(false),
+    port(-1)
   {}
   
   ~ArgsData(){}

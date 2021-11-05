@@ -560,7 +560,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
     inflow_manager.analyseArea(WD,MASK,fulldomain);
 
   // ----  INIT COUPLING MANAGER ----
-  CouplingManager coupling_manager(GRID, couplings, setup.time_start, setup.time_end);
+  CouplingManager coupling_manager(GRID, couplings, setup.time_start, setup.time_end, ad.port);
   coupling_manager.createBoxes();
   
   // ----  INIT TIME PLOTS AND RASTER GRID ----
