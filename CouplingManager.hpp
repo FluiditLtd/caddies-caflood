@@ -81,6 +81,15 @@ public:
     void end();
 
     CA::Real potentialVA(CA::Real t, CA::Real period_time_dt);
+
+    CA::Real volume(CA::Real period_time_dt) {
+        double volume = 0;
+        for (auto i = coupling.begin(); i != coupling.end(); i++) {
+            volume += (*i).flow;
+        }
+        return (CA::Real)(volume * period_time_dt);
+    }
+
     CA::Real endTime();
 
 private:

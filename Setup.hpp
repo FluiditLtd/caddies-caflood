@@ -85,7 +85,12 @@ struct Setup
   //! permeability value for each cell and the no data value.
   std::string   permeability_ASCII;
 
-  //  --- RAIN EVENT  ---  
+  //  --- LEVEL  ---
+  //! ARC/INFO ASCII GRID format file with the specific
+  //! absolute water level value for each cell and the no data value.
+  std::string   level_ASCII;
+
+    //  --- RAIN EVENT  ---
   //! CSV file(s) with the configuration of the rain event(s) to add
   //! into the grid.
   std::vector<std::string> rainevent_files;

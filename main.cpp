@@ -70,7 +70,7 @@ inline void version()
 //! \param[in] setup    The setup of the simulation.
 //! \param[in] ele_file The elevation file.
 //! \return A non zero value if there was an error.
-int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file, const std::string& manning_file, const std::string& permeability_file); 
+int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file, const std::string& manning_file, const std::string& permeability_file, const std::string& level_file);
 
 
 //! Perform the post processing of the data for a CA 2D model. 
@@ -310,6 +310,7 @@ int main(int argc, char* argv[])
     std::cout<<"Elevation ASCII           : "<<setup.elevation_ASCII<<std::endl;
     std::cout<<"Manning ASCII             : "<<setup.manning_ASCII<<std::endl;
     std::cout<<"Permeability ASCII        : "<<setup.permeability_ASCII<<std::endl;
+    std::cout<<"Level ASCII               : "<<setup.level_ASCII<<std::endl;
     std::cout<<"Rain Event CSV            : ";
     for(size_t i = 0; i< setup.rainevent_files.size(); ++i)
       std::cout<<setup.rainevent_files[i]<<" ";
@@ -385,7 +386,13 @@ int main(int argc, char* argv[])
       permeability_file = ad.working_dir+ad.sdir+setup.permeability_ASCII;
   else
       permeability_file = "";
-  
+
+  //! Load the level file.
+  std::string level_file;
+  if (setup.level_ASCII != "")
+      level_file = ad.working_dir+ad.sdir+setup.level_ASCII;
+  else
+      level_file = "";
 
   if(ad.info)
     std::cout<<std::endl<<"Load rain event inputs configuration "<<std::endl;
@@ -596,7 +603,7 @@ int main(int argc, char* argv[])
       if(ad.info)
 	std::cout<<std::endl<<"Starting pre-processing data "<<std::endl;
    
-      if(preProc(ad, setup, ele_file, manning_file, permeability_file)!=0)
+      if(preProc(ad, setup, ele_file, manning_file, permeability_file, level_file)!=0)
       {
 	std::cerr<<"Error while performing pre-processing"<<std::endl;
 	std::cerr<<"Possible cause is the output directory argument"<<std::endl;

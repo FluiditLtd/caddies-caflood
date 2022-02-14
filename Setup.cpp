@@ -62,7 +62,7 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
   setup.rast_vel_as_vect   = true ;
   setup.rast_wd_tol        = 0.01 ;
   setup.rast_boundary      = false;
-  setup.rast_places        = 6;
+  setup.rast_places        = 4;
   setup.update_peak_dt     = false;
   setup.expand_domain      = false;
   setup.ignore_upstream    = false;
@@ -199,6 +199,14 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
       READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
 
       setup.permeability_ASCII = CA::trimToken(str);
+    }
+
+    if(CA::compareCaseInsensitive("Level ASCII",tokens[0],true))
+    {
+        std::string str;
+        READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
+
+       setup.level_ASCII = CA::trimToken(str);
     }
 
     if(CA::compareCaseInsensitive("Rain Event CSV",tokens[0],true))

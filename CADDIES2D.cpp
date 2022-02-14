@@ -165,6 +165,7 @@ void computeDT(CA::Real& dt, CA::Unsigned& dtfrac, CA::Real dtn1, const Setup& s
 #include CA_2D_INCLUDE(velocityWCA2Dv1)
 #include CA_2D_INCLUDE(infiltration)
 
+#include CA_2D_INCLUDE(setInitialLevel)
 #include CA_2D_INCLUDE(setBoundaryEle)
 #include CA_2D_INCLUDE(removeUpstr)
 #include CA_2D_INCLUDE(updatePEAKC)
@@ -313,10 +314,23 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
   // It contains a "real" value in each cell of the grid.
   CA::CellBuffReal  PERMEABILITY(GRID);
 
-  // Load the data not from the Manning file but from the pre-processed file.
+  // Load the data not from the permeability file but from the pre-processed file.
   if(!PERMEABILITY.loadData(setup.preproc_name+"_PERMEABILITY","0") )
     std::cerr<<"Error while loading the permeability pre-processed file"<<std::endl;
 
+
+  // -- Level GRID ---
+
+  // Create the level cell buffer.
+  // It contains a "real" value in each cell of the grid.
+  CA::CellBuffReal  LEVEL(GRID);
+
+  // Se the default value of the level to be veeery negative
+  LEVEL.fill(fulldomain, -99999);
+
+  // Load the data not from the level file but from the pre-processed file.
+  if(!LEVEL.loadData(setup.preproc_name+"_LEVEL","0") )
+      std::cerr<<"Error while loading the level pre-processed file"<<std::endl;
 
   // ----  CELL BUFFERS ----
     
@@ -431,6 +445,8 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
 
   CA::Real     rain_volume   = 0.0;
   CA::Real     inflow_volume = 0.0;
+  CA::Real     coupling_volume = 0.0;
+  CA::Real     outflow_volume = 0.0;
   CA::Real     wd_volume     = 0.0;
   CA::Real     inf_volume    = 0.0;
 
@@ -597,7 +613,11 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
   V.clear();
   WD.clear();
 
-  // If there is not request to expand domain. Set the computtational and extend domain to full domain.
+  // Setup the initial water level
+  CA::Execute::function(compdomain, setInitialLevel, GRID, WD, ELV, LEVEL, MASK);
+
+
+    // If there is not request to expand domain. Set the computtational and extend domain to full domain.
   if(!setup.expand_domain)
   {
     compdomain.clear();
@@ -709,12 +729,16 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       {
         // Compute the total volume of water that is in the water
         // depth (included the boundary cell).
-        WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
+        WD.sequentialOp(compdomain, wd_volume, CA::Seq::Add);
         wd_volume *= GRID.area();
 
+        WD.sequentialOp(fulldomain, outflow_volume, CA::Seq::Add);
+        outflow_volume *= GRID.area();
+        outflow_volume -= wd_volume;
+
         std::cout<<"Volume check:"<<std::endl;
-        std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
-            <<" WD = "<<wd_volume<<std::endl;	
+        std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<< " COUPLING = " << coupling_volume
+            << " INFILT = "<<-inf_volume <<" WD = "<<wd_volume<< " OUTFLOW = "<<outflow_volume << std::endl;
         std::cout<<"-----------------" << std::endl; 
         }
 
@@ -882,7 +906,7 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
       // Update the total volume from the events for the last period.
       rain_volume   += rain_manager.volume();
       inflow_volume += inflow_manager.volume();
-      // NO water level at the moment.
+      coupling_volume += coupling_manager.volume(dt);
 
       // --- UPDATE VA  ---
 
@@ -1052,13 +1076,17 @@ int CADDIES2D(const ArgsData& ad, const Setup& setup, const CA::ESRI_ASCIIGrid<C
     {
       // Compute the total volume of water that is in the water
       // depth (included the boundary cell).
-      WD.sequentialOp(fulldomain, wd_volume, CA::Seq::Add);
+      WD.sequentialOp(compdomain, wd_volume, CA::Seq::Add);
       wd_volume *= GRID.area();
 
+      WD.sequentialOp(fulldomain, outflow_volume, CA::Seq::Add);
+      outflow_volume *= GRID.area();
+      outflow_volume -= wd_volume;
+
       std::cout<<"Volume check:"<<std::endl;
-      std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<<" INFILT = "<<-inf_volume
-               <<" WD = "<<wd_volume<<std::endl;	      
-      std::cout<<"-----------------" << std::endl;  
+      std::cout<<"RAIN = "<<rain_volume<<" INFLOW = "<<inflow_volume<< " COUPLING = " << coupling_volume
+               << " INFILT = "<<-inf_volume <<" WD = "<<wd_volume<< " OUTFLOW = "<<outflow_volume << std::endl;
+      std::cout<<"-----------------" << std::endl;
     }
   }
 

@@ -38,7 +38,8 @@ THE SOFTWARE.
 //! mainly save the elevation file.
 //! \attention The GRID size add an extra set of cells in each directions.
 int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file,
-            const std::string& manning_file, const std::string& permeability_file)
+            const std::string& manning_file, const std::string& permeability_file,
+            const std::string& level_file)
 {
   
   if(setup.output_computation)
@@ -282,7 +283,69 @@ int preProc(const ArgsData& ad, const Setup& setup, const std::string& ele_file,
     if(setup.output_console)
       std::cout<<"Saved permeability data"<< std::endl;
   }
-  
+
+    // Check if pre-process data is already there
+    if( CA::Grid::exist(ad.data_dir,setup.preproc_name+"_Level","0") &&
+        CA::CellBuffReal::existData(ad.data_dir,setup.preproc_name+"_LEVEL","0") )
+    {
+
+        if(setup.output_console)
+            std::cout<<"Pre-proc data already exist for level grid"<< std::endl;
+    }
+    else
+    {
+        CA::Grid  GRID(ad.data_dir,setup.preproc_name+"_Grid","0", ad.args.active());
+        // Create the full (extended) computational domain of CA grid.
+        CA::BoxList  fulldomain;
+        CA::Box      fullbox = GRID.box();
+        fulldomain.add(fullbox);
+
+        // Create a borders object that contains all the borders and
+        // corners of the grid.
+        CA::Borders borders;
+
+        borders.addSegment(CA::Top);
+        borders.addSegment(CA::Bottom);
+        borders.addSegment(CA::Right);
+        borders.addSegment(CA::Left);
+
+        borders.addCorner(CA::TopLeft);
+        borders.addCorner(CA::TopRight);
+        borders.addCorner(CA::BottomLeft);
+        borders.addCorner(CA::BottomRight);
+
+        CA::BoxList  realdomain;
+        CA::Box      realbox(GRID.box().x()+1,GRID.box().y()+1,GRID.box().w()-2,GRID.box().h()-2);
+        realdomain.add(realbox);
+
+        // Create the permeability cell buffer.
+        // It contains a "real" value in each cell of the grid.
+        CA::CellBuffReal  LEVEL(GRID);
+
+        // Initialize the level to -9999 m
+        LEVEL.fill(fulldomain, -9999.0);
+
+        if (level_file != "")
+        {
+            CA::ESRI_ASCIIGrid<CA::Real> level_grid;
+            level_grid.readAsciiGrid(level_file);
+
+            // Insert the DEM data into the elevation cell buffer. The first
+            // parameter is the region of the buffer to write the data which is
+            // the real domain, i.e. the original non extended domain.
+            LEVEL.insertData(realbox, &level_grid.data[0], level_grid.ncols, level_grid.nrows);
+        }
+
+        // Save the data of the Elevation
+        if( !LEVEL.saveData(setup.preproc_name+"_LEVEL","0") )
+        {
+            std::cerr<<"Error while saving the level data"<<std::endl;
+            return 1;
+        }
+
+        if(setup.output_console)
+            std::cout<<"Saved level data"<< std::endl;
+    }
 
   // ---- TIME OUTPUT ----
 
