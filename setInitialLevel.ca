@@ -1,0 +1,50 @@
+/*
+    
+Copyright (c) 2013 Centre for Water Systems,
+                   University of Exeter
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+*/
+
+// Set the elevation value for the boundary cell inn order to simulate
+// OPEN or CLOSED boundary.
+CA_FUNCTION setInitialLevel(CA_GRID grid, CA_CELLBUFF_REAL_IO WD, CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I LEVEL, CA_CELLBUFF_STATE_I MASK)
+{
+  // Initialise the grid
+  CA_GRID_INIT(grid);
+
+  // Read Mask.
+  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
+
+  // Read bit 0  (false the main cell has nodata)
+  CA_STATE bit0  = caReadBitsState(mask,0,1);
+
+  // If bit 0 is false do nothing.
+  if(bit0 == 0)
+    return;
+
+  // Retrive the current value for the elevation and level.
+  CA_REAL  elevation  = caReadCellBuffReal(grid, ELV, 0);
+  CA_REAL  level  = caReadCellBuffReal(grid, LEVEL, 0);
+
+  if (level > elevation)
+      // Set the new elevation value for the boundary cell.
+      caWriteCellBuffReal(grid, WD, level - elevation);
+}
