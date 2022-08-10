@@ -138,6 +138,9 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
     if(CA::compareCaseInsensitive("Time End",tokens[0],true))
       READ_TOKEN(found_tok,setup.time_end,tokens[1],tokens[0]);
 
+    if(CA::compareCaseInsensitive("Sync DT",tokens[0],true))
+      READ_TOKEN(found_tok,setup.time_syncdt,tokens[1],tokens[0]);
+
     if(CA::compareCaseInsensitive("Max DT",tokens[0],true))
       READ_TOKEN(found_tok,setup.time_maxdt,tokens[1],tokens[0]);
 

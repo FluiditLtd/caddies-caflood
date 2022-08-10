@@ -80,7 +80,7 @@ int initICouplingsFromCSV(const std::string& filename, std::vector<ICoupling>& c
 }
 
 
-CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling, CA::Real aTime_start, CA::Real aTime_end, int aPort):
+CouplingManager::CouplingManager(CA::Grid&  GRID, CA::CellBuffReal& ELV, std::vector<ICoupling>& aCoupling, CA::Real aTime_start, CA::Real aTime_end, int aPort):
   grid(GRID),
   coupling(aCoupling),
   time_start(aTime_start),
@@ -89,7 +89,8 @@ CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupl
   readValuesUntil(0),
   previousValuesUntil(0),
   networkWaitingUntil(-1),
-  sockfd(0) {
+  sockfd(0),
+  points() {
 
     if (port > 0) {
 #ifdef _WIN32
@@ -113,10 +114,14 @@ CouplingManager::CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupl
             throw;
         }
     }
+
+    waterDepthBuffer = new CA::Real[coupling.size()];
+    createBoxes();
+    readElevations(ELV);
 }
 
 CouplingManager::~CouplingManager() {
-	
+	delete waterDepthBuffer;
 }
 
 void CouplingManager::write(std::string line) {
@@ -235,15 +240,16 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
     std::stringstream line("");
     line << "HEAD," << time;
 
-    for (auto iter = coupling.begin(); iter != coupling.end(); iter++) {
+    // Read the water depth values into the water depth buffer
+    WD.retrievePoints(points, waterDepthBuffer, coupling.size());
+
+    int index = 0;
+    for (auto iter = coupling.begin(); iter != coupling.end(); iter++, index++) {
         auto& point = *iter;
-        CA::Real depth;
-        CA::Real elevation;
 
         // Retrieve the data from the CellBUff into the temporary buffer.
-        WD.retrieveData(point.box_area, &depth, 1, 1);
-        ELV.retrieveData(point.box_area, &elevation, 1, 1);
-        line << "," << depth << "," << (depth + elevation);
+        CA::Real depth = waterDepthBuffer[index];
+        line << "," << depth << "," << (depth + point.elv);
     }
     line << "\n";
     write(line.str());
@@ -280,8 +286,20 @@ void CouplingManager::createBoxes()
     {
         auto& item = *iter;
         CA::Point     tl( CA::Point::create(grid, item.x, item.y) );
+        points.add(tl);
+
         item.box_area = CA::Box(tl.x(), tl.y(), 1, 1);
-        std::cout<<item.name<< " " << item.x << " " << item.y << " box: " << item.box_area.x() << " " << item.box_area.y() << " "  << item.box_area.w() << " " << item.box_area.h() << std::endl;
+        //std::cout<<item.name<< " " << item.x << " " << item.y << " box: " << item.box_area.x() << " " << item.box_area.y() << " "  << item.box_area.w() << " " << item.box_area.h() << std::endl;
+    }
+}
+
+void CouplingManager::readElevations(CA::CellBuffReal& ELV) {
+    ELV.retrievePoints(points, waterDepthBuffer, coupling.size());
+
+    int index = 0;
+    for (auto iter = coupling.begin(); iter != coupling.end(); iter++, index++) {
+        auto &item = *iter;
+        item.elv = waterDepthBuffer[index];
     }
 }
 

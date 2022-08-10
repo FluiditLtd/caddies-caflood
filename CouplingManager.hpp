@@ -26,6 +26,7 @@ public:
   std::string    name;      //!< Coupling component.
   CA::Real       x;         //!< X coordinate of the coupling point
   CA::Real       y;         //!< Y coordinate of the coupling point
+  CA::Real       elv;       //!< Elevation of the coupling point
   
   CA::Real       head;      //!< CAFLOOD simulated head
   CA::Real       flow;      //!< Net flow calculated by the hydraulic simulator (+ to surface, - to network)
@@ -56,8 +57,14 @@ private:
   //! Reference to the grid.
   CA::Grid& grid;
 
-  //! Reference to the List of inflow events
+  //! Reference to the list of coupling locations events
   std::vector<ICoupling>& coupling;
+
+  //! PointList for the coupling locations for reading the water depths efficiently.
+  CA::PointList points;
+
+  //! Reference to the water depth memory for the coupled points
+  CA::Real *waterDepthBuffer;
 
   int port;
   int sockfd;
@@ -70,11 +77,10 @@ private:
   bool stopped = false;
 
 public:
-    CouplingManager(CA::Grid&  GRID, std::vector<ICoupling>& aCoupling, CA::Real time_start, CA::Real time_end, int port);
+    CouplingManager(CA::Grid&  GRID, CA::CellBuffReal& ELV, std::vector<ICoupling>& aCoupling, CA::Real time_start, CA::Real time_end, int port);
     ~CouplingManager();
 
     inline bool isStopped() { return stopped; }
-    void createBoxes();
     void input(CA::Real t);
     void output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffReal& ELV);
     void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt);
@@ -93,6 +99,8 @@ public:
     CA::Real endTime();
 
 private:
+    void createBoxes();
+    void readElevations(CA::CellBuffReal& ELV);
     void write(std::string line);
     std::string read();
 };

@@ -44,18 +44,19 @@ struct Setup
 {
   //  --- SIMULATION  --- 
   std::vector<CA::Unsigned> sim_version; 
-  std::string    sim_name;	//!< Name of the simulation. 
+  std::string    sim_name;      //!< Name of the simulation.
   std::string    short_name;	//!< Short name used as base for output files. 
   std::string    preproc_name;	//!< Name used as base for the pre-processed files.
   MODEL::Type    model_type;	//!< The model used in the simulation
 
   //  --- TIME VALUES  ---  
-  CA::Real      time_start;	//!< Starting time of the simulation (seconds). 
-  CA::Real      time_end;	//!< Ending time of the simulation (seconds). 
-  CA::Real      time_maxdt;	//!< The initial and maximum time step.
-  CA::Real      time_mindt;	//!< The minimum time step.
+  CA::Real      time_start;     //!< Starting time of the simulation (seconds).
+  CA::Real      time_end;       //!< Ending time of the simulation (seconds).
+  CA::Real      time_syncdt;    //!< Minimum time for synchronizing with 1D simulator.
+  CA::Real      time_maxdt;     //!< The initial and maximum time step.
+  CA::Real      time_mindt;     //!< The minimum time step.
   CA::Real      time_updatedt;	//!< The time step to update the time step.
-  CA::Real      time_alpha;	//!< The proportion of adaptive time step taken. 
+  CA::Real      time_alpha;	    //!< The proportion of adaptive time step taken.
   CA::Unsigned  time_maxiters;	//!< The maximum number of iterations. 
 
   //  --- SIMULATION PARAMETERS ---
