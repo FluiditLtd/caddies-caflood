@@ -377,6 +377,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     // ----  SCALAR VALUES ----
 
     CA::Unsigned iter = 0;           // The actual iteration number.
+    CA::Real prev_input = setup.time_start - setup.time_syncdt;
     CA::Real prev_output = setup.time_start;
     CA::Real t = setup.time_start;  // The actual time in seconds
     CA::Real dt = setup.time_maxdt;  // Starting delta time.
@@ -819,7 +820,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
         inflow_manager.add(WD, MASK, t, dt);
 
         // Add the eventual coupling events.
-        coupling_manager.add(WD, MASK, t, dt);
+        coupling_manager.add(WD, MASK, GRID.area(), t, dt);
 
         // Add the eventual water level events.
         wl_manager.add(WD, ELV, MASK, t, dt);
@@ -834,9 +835,10 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
             coupling_manager.output(t, WD, ELV);
             prev_output = t;
         }
-        if (t < setup.time_end)
+        if (t < setup.time_end && t - prev_input >= setup.time_syncdt) {
             coupling_manager.input(t);
-
+            prev_input = t;
+        }
 
         // Check if the dt need to be re-computed.
         if (t >= time_dt || --iter_dt == 0) {

@@ -255,8 +255,11 @@ void CouplingManager::output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffRe
     write(line.str());
 }
 
-void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt)
+void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real area, CA::Real t, CA::Real dt)
 {
+  CA::PointList points;
+  std::vector<CA::Real> volumes;
+
   // Loop through the couplings
   for(size_t i = 0; i < coupling.size(); ++i)
   {
@@ -264,19 +267,31 @@ void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Rea
     // interpolation. Check if the index is the last available
     // one, then there is no inflow.
     CA::Real volume;
+    ICoupling &point = coupling[i];
     if (t < readValuesUntil)
-        volume = coupling[i].prevFlow * dt;
+        volume = point.prevFlow * dt;
     else
-        volume = coupling[i].flow * dt;
+        volume = point.flow * dt;
 
     // Add (or subtract) the given volume into the water detph of the
     // given area.
     // Do not add it if it is zero.
     if(std::abs(volume)>=SMALL_INFLOW)      
     {
-      CA::Execute::function(coupling[i].box_area, addInflow, grid, WD, MASK, volume);           
+        points.add(point.box_area.topLeft());
+        volumes.push_back(volume);
     }
   }
+
+  unsigned long size = points.size();
+  CA::Real *buffer = new CA::Real[size];
+  WD.retrievePoints(points, buffer, size);
+
+  for (size_t i = 0; i < size; i++)
+      buffer[i] = std::max(static_cast<CA::Real>(0), buffer[i] + volumes[i] / area);
+
+  WD.insertPoints(points, buffer, size);
+  delete buffer;
 }
 
 void CouplingManager::createBoxes()
