@@ -292,13 +292,14 @@ void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Rea
   }
 
   unsigned long size = points.size();
-  CA::Real buffer[size];
+  CA::Real *buffer = new CA::Real[size];
   WD.retrievePoints(points, buffer, size);
 
   for (size_t i = 0; i < size; i++)
       buffer[i] = std::max(static_cast<CA::Real>(0), buffer[i] + volumes[i] / area);
 
   WD.insertPoints(points, buffer, size);
+  delete buffer;
 }
 
 void CouplingManager::createBoxes()
