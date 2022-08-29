@@ -248,7 +248,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     CA::BoxList compdomain;
 
     // Create the computational domain used for sequential
-    // compuattaion. SequentialOp does not work with multiple boxes.
+    // computation. SequentialOp does not work with multiple boxes.
     CA::BoxList seqdomain(fullbox);
 
     // -- INITIALISE ELEVATION ---
@@ -377,6 +377,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     // ----  SCALAR VALUES ----
 
     CA::Unsigned iter = 0;           // The actual iteration number.
+    CA::Real prev_input = setup.time_start - setup.time_syncdt;
     CA::Real prev_output = setup.time_start;
     CA::Real t = setup.time_start;  // The actual time in seconds
     CA::Real dt = setup.time_maxdt;  // Starting delta time.
@@ -558,6 +559,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
 
     // ----  INIT COUPLING MANAGER ----
     CouplingManager coupling_manager(GRID, ELV, couplings, setup.time_start, setup.time_end, ad.port);
+    coupling_manager.addDomain(compdomain);
 
     // ----  INIT TIME PLOTS AND RASTER GRID ----
 
@@ -593,10 +595,9 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     WD.clear();
 
     // Setup the initial water level
-    CA::Execute::function(compdomain, setInitialLevel, GRID, WD, ELV, LEVEL, MASK);
+    CA::Execute::function(fulldomain, setInitialLevel, GRID, WD, ELV, LEVEL, MASK);
 
-
-    // If there is not request to expand domain. Set the computtational and extend domain to full domain.
+    // If there is no request to expand the domain, set the computational to match the full domain.
     if (!setup.expand_domain) {
         compdomain.clear();
         compdomain.add(fullbox);
@@ -819,7 +820,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
         inflow_manager.add(WD, MASK, t, dt);
 
         // Add the eventual coupling events.
-        coupling_manager.add(WD, MASK, t, dt);
+        coupling_manager.add(WD, MASK, GRID.area(), t, dt);
 
         // Add the eventual water level events.
         wl_manager.add(WD, ELV, MASK, t, dt);
@@ -834,9 +835,10 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
             coupling_manager.output(t, WD, ELV);
             prev_output = t;
         }
-        if (t < setup.time_end)
+        if (t < setup.time_end && t - prev_input >= setup.time_syncdt) {
             coupling_manager.input(t);
-
+            prev_input = t;
+        }
 
         // Check if the dt need to be re-computed.
         if (t >= time_dt || --iter_dt == 0) {

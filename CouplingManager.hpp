@@ -80,10 +80,11 @@ public:
     CouplingManager(CA::Grid&  GRID, CA::CellBuffReal& ELV, std::vector<ICoupling>& aCoupling, CA::Real time_start, CA::Real time_end, int port);
     ~CouplingManager();
 
+    void addDomain(CA::BoxList& compdomain);
     inline bool isStopped() { return stopped; }
     void input(CA::Real t);
     void output(CA::Real time, CA::CellBuffReal& WD, CA::CellBuffReal& ELV);
-    void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t, CA::Real dt);
+    void add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real area, CA::Real t, CA::Real dt);
     void end();
 
     CA::Real potentialVA(CA::Real t, CA::Real period_time_dt);
