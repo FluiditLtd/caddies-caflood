@@ -1077,5 +1077,6 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
         std::cout << "------------------------------------------" << std::endl;
     }
 
+    coupling_manager.close();
     return 0;
 }

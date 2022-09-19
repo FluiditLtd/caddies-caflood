@@ -327,14 +327,17 @@ void CouplingManager::readElevations(CA::CellBuffReal& ELV) {
 }
 
 void CouplingManager::end() {
-    if (coupling.size() > 0 && !inputEnded && !stopped) {
+    if (coupling.size() > 0) {
         write("END\n");
-#ifdef _WIN32
-        closesocket(sockfd);
-#else
-        close(sockfd);
-#endif
     }
+}
+
+void CouplingManager::close() {
+#ifdef _WIN32
+    closesocket(sockfd);
+#else
+    ::close(sockfd);
+#endif
 }
 
 CA::Real CouplingManager::potentialVA(CA::Real t, CA::Real period_time_dt)
