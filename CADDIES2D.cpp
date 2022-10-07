@@ -874,7 +874,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
             // Update the total volume from the events for the last period.
             rain_volume += rain_manager.volume();
             inflow_volume += inflow_manager.volume();
-            coupling_volume += coupling_manager.volume(dt);
+            coupling_volume += coupling_manager.volume();
 
             // --- UPDATE VA  ---
 
@@ -1034,7 +1034,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     if (setup.output_console && t >= time_output) {
         outputConsole(iter, oiter, t, dt, avgodt, minodt, maxodt, vamax, upstr_elv, compdomain, setup);
 
-        if (setup.check_vols == true) {
+        if (setup.check_vols) {
             // Compute the total volume of water that is in the water
             // depth (included the boundary cell).
             WD.sequentialOp(compdomain, wd_volume, CA::Seq::Add);

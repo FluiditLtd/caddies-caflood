@@ -31,6 +31,7 @@ public:
   CA::Real       head;      //!< CAFLOOD simulated head
   CA::Real       flow;      //!< Net flow calculated by the hydraulic simulator (+ to surface, - to network)
   CA::Real       prevFlow;  //!< Net flow calculated by the hydraulic simulator (+ to surface, - to network)
+  CA::Real       actualFlow;//!< The realized flow calculated by the 2D simulator (+ to surface, - to network)
   CA::Box        box_area;  //!< The box of the area where the flow is set.
 
   ICoupling():
@@ -73,6 +74,7 @@ private:
   CA::Real readValuesUntil;
   CA::Real previousValuesUntil;
   CA::Real networkWaitingUntil;
+  double coupledVolume = 0.0;
   bool inputEnded = false;
   bool stopped = false;
 
@@ -90,15 +92,17 @@ public:
 
     CA::Real potentialVA(CA::Real t, CA::Real period_time_dt);
 
-    CA::Real volume(CA::Real period_time_dt) {
-        double volume = 0;
-        for (auto i = coupling.begin(); i != coupling.end(); i++) {
-            volume += (*i).flow;
-        }
-        return (CA::Real)(volume * period_time_dt);
+    CA::Real volume() {
+        return getAndResetCoupledVolume();
     }
 
     CA::Real endTime();
+
+    CA::Real getAndResetCoupledVolume() {
+        CA::Real ret = (CA::Real)coupledVolume;
+        coupledVolume = 0.0;
+        return ret;
+    }
 
 private:
     void createBoxes();

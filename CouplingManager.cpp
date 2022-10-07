@@ -267,6 +267,7 @@ void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Rea
 {
   CA::PointList points;
   std::vector<CA::Real> volumes;
+  std::vector<ICoupling> couplings;
 
   // Loop through the couplings
   for (auto iter = coupling.begin(); iter != coupling.end(); iter++)
@@ -288,15 +289,24 @@ void CouplingManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Rea
     {
         points.add(point.box_area.topLeft());
         volumes.push_back(volume);
+        couplings.push_back(point);
     }
+    else
+        point.actualFlow = 0;
   }
 
   unsigned long size = points.size();
   CA::Real *buffer = new CA::Real[size];
   WD.retrievePoints(points, buffer, size);
 
-  for (size_t i = 0; i < size; i++)
+  for (size_t i = 0; i < size; i++) {
+      CA::Real old = buffer[i];
       buffer[i] = std::max(static_cast<CA::Real>(0), buffer[i] + volumes[i] / area);
+
+      CA::Real volume = (buffer[i] - old) * area;
+      couplings[i].actualFlow = volume / dt;
+      coupledVolume += volume;
+  }
 
   WD.insertPoints(points, buffer, size);
   delete buffer;
