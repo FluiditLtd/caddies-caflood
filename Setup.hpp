@@ -91,6 +91,11 @@ struct Setup
   //! absolute water level value for each cell and the no data value.
   std::string   level_ASCII;
 
+  //  --- INFILTRATION  ---
+  //! ARC/INFO ASCII GRID format file with the specific
+  //! infiltration value for each cell and the no data value.
+  std::string   infiltration_ASCII;
+
     //  --- RAIN EVENT  ---
   //! CSV file(s) with the configuration of the rain event(s) to add
   //! into the grid.

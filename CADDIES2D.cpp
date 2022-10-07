@@ -197,6 +197,29 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     // Get starting time.
     CA::Clock total_timer;
 
+    CA::Real prev_input = setup.time_start - setup.time_syncdt;
+    CA::Real prev_output = setup.time_start;
+    CA::Real t = setup.time_start;  // The actual time in seconds
+    CA::Real dt = setup.time_maxdt;  // Starting delta time.
+    CA::Real dtn1 = 0.0;
+
+    // This is the period of when the velocity is computed.
+    CA::Real period_time_dt = setup.time_updatedt;
+    CA::Real time_dt = t + period_time_dt;          // The next simulation time when to update dt.
+    CA::Unsigned iter_dt = 0;                   // The number of iteration before next update dt.
+
+    // This is the time from the start of an update dt.
+    CA::Real start_updatedt = 0.0;
+
+    // This is the previous update step dt.
+    CA::Real previous_dt = dt;
+
+    // The fraction of time_maxdt second used to compute the next the dt
+    CA::Unsigned dtfrac = 1;
+
+    // The parameter of the time step.
+    CA::Real alpha = setup.time_alpha;
+
     // ----  CA GRID ----
 
     // Load the CA Grid from the DataDir.
@@ -317,6 +340,50 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     if (!LEVEL.loadData(setup.preproc_name + "_LEVEL", "0"))
         std::cerr << "Error while loading the level pre-processed file" << std::endl;
 
+    // -- Infiltration GRID ---
+
+    // If true perform the infiltration step.
+    bool useInfiltration = false;
+
+    // The amount of water to remove during an update step.
+    CA::Real inf_updatedt = 0.0;
+
+    // Create the infiltration cell buffer.
+    // It contains a "real" value in each cell of the grid.
+    CA::CellBuffReal INFILTRATION(GRID);
+
+    // If not infiltration raster is not given, fill the raster with global value
+    if (setup.infiltration_ASCII.empty()) {
+        // Check if the infiltration computation is needed.
+        useInfiltration = (setup.infrate_global > 0);
+
+        // Transform from meter to mm and from hour to update_dt
+        inf_updatedt = (setup.infrate_global * 0.001) * (period_time_dt / 3600.0);
+
+        INFILTRATION.fill(fulldomain, inf_updatedt);
+    }
+
+    // Otherwise read in the pre-processed infiltration raster
+    else {
+        // Set the default value of the infiltration to be veeery negative
+        INFILTRATION.fill(fulldomain, -99999);
+
+        // Load the data not from the level file but from the pre-processed file.
+        if (!INFILTRATION.loadData(setup.preproc_name + "_INF", "0")) {
+            std::cerr << "Error while loading the infiltration pre-processed file" << std::endl;
+            useInfiltration = false;
+        }
+        else {
+            // Transform from meter to mm and from hour to update_dt
+            inf_updatedt = (setup.infrate_global * 0.001) * (period_time_dt / 3600.0);
+
+            // Convert the mm/h infiltration raster to m/time_step units...
+            CA::Real multiplier = (CA::Real)(0.001 * (period_time_dt / 3600.0));
+            INFILTRATION.operationOp(fulldomain, multiplier, CA::Bdr::Mul);
+            useInfiltration = true;
+        }
+    }
+
     // ----  CELL BUFFERS ----
 
     // Create  the water depth cell buffer.
@@ -377,11 +444,6 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     // ----  SCALAR VALUES ----
 
     CA::Unsigned iter = 0;           // The actual iteration number.
-    CA::Real prev_input = setup.time_start - setup.time_syncdt;
-    CA::Real prev_output = setup.time_start;
-    CA::Real t = setup.time_start;  // The actual time in seconds
-    CA::Real dt = setup.time_maxdt;  // Starting delta time.
-    CA::Real dtn1 = 0.0;
     CA::Real nodata = eg.nodata;
 
     // The simulation time when the events will not produce any further water.
@@ -401,23 +463,6 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     // between two points must be higher than this value.
     // The tollerance is passed in percentile.
     CA::Real tol_slope = setup.tol_slope / 100;
-
-    // This is the period of when the velocity is computed.
-    CA::Real period_time_dt = setup.time_updatedt;
-    CA::Real time_dt = t + period_time_dt;          // The next simulation time when to update dt.
-    CA::Unsigned iter_dt = 0;                   // The number of iteration before next update dt.
-
-    // This is the time from the start of an update dt.
-    CA::Real start_updatedt = 0.0;
-
-    // This is the previous update step dt.
-    CA::Real previous_dt = dt;
-
-    // The fraction of time_maxdt second used to compute the next the dt
-    CA::Unsigned dtfrac = 1;
-
-    // The parameter of the time step.
-    CA::Real alpha = setup.time_alpha;
 
     // The inverse of the roughness
     CA::Real irough = 1 / setup.roughness_global;
@@ -463,12 +508,6 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     // iteration.
     bool RGwritten = false;
 
-    // If true perform the infiltration step.
-    bool useInfiltration = false;
-
-    // The amount of water to remove during an update step.
-    CA::Real inf_updatedt = 0.0;
-
     // -- CREATE FULL MASK ---
 
     CA::createCellMask(fulldomain, GRID, ELV, MASK, nodata);
@@ -498,19 +537,16 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
 
     // ----  INFILTRATION ----
 
-    // Check if the infiltration computation is needed.
-    useInfiltration = (setup.infrate_global > 0);
-
-    // Transform from meter to mm and from hour to update_dt
-    inf_updatedt = (setup.infrate_global * 0.001) * (period_time_dt / 3600.0);
-
     if (setup.output_console) {
         std::cout << "--------------------------------------------------------" << std::endl;
         if (useInfiltration) {
             std::cout << "Infiltration computation     : yes" << std::endl;
-            std::cout << "Amount during an update step : " << inf_updatedt << std::endl;
-            std::cout << "Attention                    : Beta code" << std::endl;
-        } else
+            if (setup.infiltration_ASCII.empty())
+                std::cout << "Constant infiltration during an update step : " << inf_updatedt << std::endl;
+            else
+                std::cout << "Infiltration values from raster : " << setup.infiltration_ASCII << std::endl;
+        }
+        else
             std::cout << "Infiltration computation     : no" << std::endl;
         std::cout << "--------------------------------------------------------" << std::endl;
     }
@@ -845,7 +881,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
                 // Clear the angle.
                 A.clear();
 
-                CA::Execute::function(fulldomain, infiltration, GRID, WD, MASK, A, inf_updatedt);
+                CA::Execute::function(fulldomain, infiltration, GRID, WD, MASK, INFILTRATION, A, inf_updatedt);
 
                 if (setup.check_vols) {
                     // Retrieve the volume removed through infiltration
@@ -900,7 +936,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
                     A.clear();
 
                     // Compute the velocity using the last outflux (OUTF2)
-                    // Compute dt using Hunter formual
+                    // Compute dt using Hunter formula
                     CA::Execute::function(compdomain, velocityDiffusive, GRID, V, A, (*PDT),
                                           WD, ELV, MANNING, (*POUTF2), MASK, VELALARMS,
                                           tol_va, tol_slope, dt, upstr_elv);

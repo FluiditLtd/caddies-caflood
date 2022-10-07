@@ -212,7 +212,15 @@ int initSetupFromCSV(const std::string& filename, Setup& setup)
        setup.level_ASCII = CA::trimToken(str);
     }
 
-    if(CA::compareCaseInsensitive("Rain Event CSV",tokens[0],true))
+      if(CA::compareCaseInsensitive("Infiltration ASCII",tokens[0],true))
+      {
+          std::string str;
+          READ_TOKEN(found_tok,str,tokens[1],tokens[0]);
+
+          setup.infiltration_ASCII = CA::trimToken(str);
+      }
+
+      if(CA::compareCaseInsensitive("Rain Event CSV",tokens[0],true))
     {
       found_tok=true;
       for (size_t i=1; i<tokens.size(); ++i)
