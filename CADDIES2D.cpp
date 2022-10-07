@@ -749,8 +749,8 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
 
                 // Compute outflow using WCA2Dv1.
                 // Check if there is an outflow in the border of the box.
-                CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF1, ELV, MANNING, PERMEABILITY, WD, MASK,
-                                      OUTFALARMS,
+                CA::Execute::function(compdomain, outflowWCA2Dv1, GRID, OUTF1, ELV, MANNING,
+                                      PERMEABILITY, WD, MASK, OUTFALARMS,
                                       ignore_wd, tol_delwl, dt);
 
                 break;
@@ -759,15 +759,8 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
                 // This save a division operation for each cell.
                 CA::Real ratio_dt = dt / previous_dt;
 
-/*            CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_REAL_I OUTF2,
-                                       CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING,
-                                       CA_CELLBUFF_REAL_I PERMEABILITY, CA_CELLBUFF_REAL_I WD,
-                                       CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS,
-                                       CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
-                                       CA_GLOB_REAL_I dt, CA_GLOB_REAL_I ratio_dt)*/
-
                 CA::Execute::function(compdomain, outflowWCA2Dv2, GRID, (*POUTF1), (*POUTF2),
-                                      ELV, MANNING, PERMEABILITY, WD, MASK, OUTFALARMS,
+                                      ELV, MANNING, PERMEABILITY, V, WD, MASK, OUTFALARMS,
                                       ignore_wd, tol_delwl, dt, ratio_dt);
 
                 break;

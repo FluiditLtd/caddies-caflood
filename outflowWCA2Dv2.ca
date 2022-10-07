@@ -41,7 +41,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 
 CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_REAL_I OUTF2,
 			   CA_CELLBUFF_REAL_I ELV, CA_CELLBUFF_REAL_I MANNING,
-               CA_CELLBUFF_REAL_I PERMEABILITY, CA_CELLBUFF_REAL_I WD, 
+               CA_CELLBUFF_REAL_I PERMEABILITY, CA_CELLBUFF_REAL_I VEL, CA_CELLBUFF_REAL_I WD,
 			   CA_CELLBUFF_STATE_I MASK, CA_ALARMS_O ALARMS, 
 			   CA_GLOB_REAL_I ignore_wd, CA_GLOB_REAL_I tol_delwl,
 			   CA_GLOB_REAL_I dt, CA_GLOB_REAL_I ratio_dt)
@@ -66,18 +66,21 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
     CA_REAL roughness = 1.0 / caReadCellBuffReal(grid, MANNING, 0);    
       
     // Create an array which will contain various water values during the
-    // computation for each neighbourh cell, in the following order:
+    // computation for each neighbour cell, in the following order:
     // 1) WATER depth
     // 2) WATER level
     // 3) WATER difference with main cell.
     CA_ARRAY_CREATE(grid, CA_REAL, WATER, caNeighbours+1);
-  
-    // Create an array wich will contain vairous weight value during the
-    // computation for each eighbour cell, in the follwoing order:
+
+    // Create an array for the velocity values
+    CA_ARRAY_CREATE(grid, CA_REAL, VELO, caNeighbours+1);
+
+    // Create an array which will contain various weight value during the
+    // computation for each neighbour cell, in the following order:
     // 1) Elevation
     // 2) 'Diffusive' Weight.
-    // Attention, for the majority of the code whe we talk about weight
-    // we mainly inted the numerator of the weight fraction.
+    // Attention, for the majority of the code when we talk about weight
+    // we mainly mean the numerator of the weight fraction.
     CA_ARRAY_CREATE(grid, CA_REAL, WEIGHT, caNeighbours+1);  
 
     // Create the array which will contain the previous step water
@@ -89,6 +92,9 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
 
     // Read the elevation of the neighbourhood cells, (stored temporarly in WEIGHT).
     caReadCellBuffRealCellArray(grid, ELV, WEIGHT);
+
+    // Read the velocity of the neighbourhood cells.
+    caReadCellBuffRealCellArray(grid, VEL, VELO);
 
     // Read the previous fluxes of the main cell.
     caReadEdgeBuffRealEdgeArray(grid, OUTF2, 0, PFLUXES);
@@ -108,19 +114,19 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
     int     edge_max   = 0;
   
     // Compute the water level of the cells since WATER and WEIGHT
-    // contein respectively the water detph and elevation.
+    // contain respectively the water depth, elevation and the velocity head.
 #pragma unroll
     for(int k=0; k<=caNeighbours; ++k)
-      WATER[k] += WEIGHT[k];    
+      WATER[k] += WEIGHT[k] + (VELO[k] * VELO[k] / 2 / 9.80665);
 
-    // Compute the difference in water level (wich cannot be more than
+    // Compute the difference in water level (which cannot be more than
     // the water available on the cell). This will be store in WLA;
     // WATER contains delwl
 #pragma unroll
     for(int k=1; k<=caNeighbours; ++k)
       WATER[k] = caMinReal(WATER[0] - WATER[k], wdmain);      
 
-    // Read the permeabilities of the neighbourhood cells, (stored temporarly in WEIGHT).
+    // Read the permeabilities of the neighbourhood cells, (stored temporarily in WEIGHT).
     caReadCellBuffRealCellArray(grid, PERMEABILITY, WEIGHT);
     
     // Find the difference in water level / water volume between the
@@ -142,7 +148,7 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
         // water volume (afterwards WEIGHT contains delwv).
         WEIGHT[k] = WEIGHT[k] * WATER[k] * caArea(grid,k);
 
-        // Get the minimum difference in water volume of the downstreams cell.
+        // Get the minimum difference in water volume of the downstream cell.
         mindelwv = caMinReal(mindelwv, WEIGHT[k]);      
       }
       else
@@ -172,7 +178,7 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
     if(!(totalw <= 0.0))
     {
         // Now we have to compute the weight of the main cell. This is the
-        // minimum differenc in water volume. We add this weight to the total weight.
+        // minimum difference in water volume. We add this weight to the total weight.
         totalw += mindelwv;  
 
         // Retrieve the maximum values
@@ -180,7 +186,7 @@ CA_FUNCTION outflowWCA2Dv2(CA_GRID grid, CA_EDGEBUFF_REAL_IO OUTF1, CA_EDGEBUFF_
         CA_REAL dx_max     = caLength(grid,0,edge_max);
         CA_REAL dist_max   = caDistance(grid,edge_max);
 
-        // Compute the maximum velocity using Mannign equation and
+        // Compute the maximum velocity using Manning equation and
         // critical velocity. The maximum velocity allowed is 20 m/s
         CA_REAL max_vh  = caMinReal(20.0, caFlowVelocity(roughness, delwl_max / dist_max, wdmain, wdmain));
 
