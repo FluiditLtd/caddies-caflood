@@ -161,6 +161,7 @@ void computeDT(CA::Real &dt, CA::Unsigned &dtfrac, CA::Real dtn1, const Setup &s
 #include CA_2D_INCLUDE(outflowWCA2Dv2)
 #include CA_2D_INCLUDE(waterdepth)
 #include CA_2D_INCLUDE(velocityDiffusive)
+#include CA_2D_INCLUDE(outflow)
 
 
 //
@@ -737,9 +738,13 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
                 WD.sequentialOp(compdomain, wd_volume, CA::Seq::Add);
                 wd_volume *= GRID.area();
 
-                WD.sequentialOp(fulldomain, outflow_volume, CA::Seq::Add);
-                outflow_volume *= GRID.area();
-                outflow_volume -= wd_volume;
+                // Clear the angle.
+                A.clear(0);
+                CA::Execute::function(fulldomain, outflow, GRID, WD, MASK, A, setup.ignore_wd);
+
+                CA::Real vol = 0;
+                A.sequentialOp(fulldomain, vol, CA::Seq::Add);
+                outflow_volume += vol * GRID.area();
 
                 std::cout << "Volume check:" << std::endl;
                 std::cout << "RAIN = " << rain_volume << " INFLOW = " << inflow_volume << " COUPLING = "
@@ -1076,9 +1081,13 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
             WD.sequentialOp(compdomain, wd_volume, CA::Seq::Add);
             wd_volume *= GRID.area();
 
-            WD.sequentialOp(fulldomain, outflow_volume, CA::Seq::Add);
-            outflow_volume *= GRID.area();
-            outflow_volume -= wd_volume;
+            // Clear the angle.
+            A.clear(0);
+            CA::Execute::function(fulldomain, outflow, GRID, WD, MASK, A, setup.ignore_wd);
+
+            CA::Real vol = 0;
+            A.sequentialOp(compdomain, vol, CA::Seq::Add);
+            outflow_volume += vol * GRID.area();
 
             std::cout << "Volume check:" << std::endl;
             std::cout << "RAIN = " << rain_volume << " INFLOW = " << inflow_volume << " COUPLING = " << coupling_volume

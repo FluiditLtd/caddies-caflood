@@ -166,6 +166,7 @@ int main(int argc, char* argv[])
   ad.args.add(na++,"info",        "Print information about the configuration on console",  "",  true, false);
   ad.args.add(na++,"pre-proc",    "Perform the pre-processing of the data (only)",         "",  true, false);
   ad.args.add(na++,"post-proc",   "Perform the post-processing of the data (only)",         "",  true, false);
+  ad.args.add(na++,"no-post-proc","Do NOT perform the post-processing of the data",         "",  true, false);
   ad.args.add(na++,"no-pre-proc", "Do NOT perform the pre-processing of the data",         "",  true, false);
   ad.args.add(na++,"WCA2D",       "Perform the WCA2D flood model (deprecated)",            "",  true, false);
   ad.args.add(na++,"sim",         "Perform the flood model simulation",                    "",  true, false);
@@ -244,6 +245,9 @@ int main(int argc, char* argv[])
       ad.model = "sim";
       ad.post_proc = true;
     }
+
+    if((*i)->name == "no-post-proc")
+      ad.post_proc = false;
 
     if((*i)->name == "terrain-info")
     {

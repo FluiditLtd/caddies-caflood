@@ -66,21 +66,21 @@ inline CA::Real nextTimeNearestAction(CA::Real t, CA::Real t_nearest, CA::Real p
 int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real>& eg,
 	     const std::vector<TimePlot>& tps, const std::vector<RasterGrid>& rgs)
 {
-  
+
   if(setup.output_computation)
   {
     std::cout<<"Post-processing : "<<setup.sim_name<< std::endl;
-    std::cout<<"------------------------------------------" << std::endl; 
+    std::cout<<"------------------------------------------" << std::endl;
   }
 
   // ----  Timer ----
-  
+
   // Get starting time.
   CA::Clock total_timer;
 
   // ----  CA GRID ----
-  
-  // Load the CA Grid from the DataDir. 
+
+  // Load the CA Grid from the DataDir.
   // ATTENTION this should have an extra set of cells in each
   // direction.  The internal implementation could be different than a
   // square regular grid.
@@ -92,7 +92,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
   // Set if to print debug information on CA function.
   GRID.setCAPrint(false);
 
-  // Create the full (extended) computational domain of CA grid. 
+  // Create the full (extended) computational domain of CA grid.
   CA::BoxList  fulldomain;
   CA::Box      fullbox = GRID.box();
   fulldomain.add(fullbox);
@@ -100,12 +100,12 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
   // Create a borders object that contains all the borders and
   // corners of the grid.
   CA::Borders borders;
-  
+
   borders.addSegment(CA::Top);
   borders.addSegment(CA::Bottom);
   borders.addSegment(CA::Right);
   borders.addSegment(CA::Left);
-  
+
   borders.addCorner(CA::TopLeft);
   borders.addCorner(CA::TopRight);
   borders.addCorner(CA::BottomLeft);
@@ -131,7 +131,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
   // It contains a "real" value in each cell of the grid.
   CA::CellBuffReal  WD(GRID);
 
-  // Set the border of the elevation buffer to be no data. 
+  // Set the border of the elevation buffer to be no data.
   ELV.bordersValue(borders,agtmp1.nodata);
 
   // Se the default value of the elevation to be nodata.
@@ -149,7 +149,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
     std::cout<<"Loaded Elevation data"<< std::endl;
 
   // ----  CELL BUFFERS ----
-    
+
   // Create two temporary Cell buffer
   CA::CellBuffReal TMP1(GRID);
   CA::CellBuffReal TMP2(GRID);
@@ -157,8 +157,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
   // Create the MASK cell buffer. The mask is usefull to check wich
   // cell has data and nodata and which cell has neighbourhood with
   // data.
-  CA::CellBuffState MASK(GRID);  
-  
+  CA::CellBuffState MASK(GRID);
+
   // ----  SCALAR VALUES ----
 
   CA::Unsigned iter      = 0;		        // The actual iteration number.
@@ -167,8 +167,8 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
   CA::Real     nodata    = agtmp1.nodata;
 
   // -- CREATE FULL MASK ---
-  
-  CA::createCellMask(fulldomain,GRID,ELV,MASK,nodata);  
+
+  CA::createCellMask(fulldomain,GRID,ELV,MASK,nodata);
 
   // ----  INIT RASTER GRID ----
 
@@ -187,7 +187,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 
   for(size_t i = 0; i<rgs.size(); ++i)
   {
-    std::string filename = ad.output_dir+ad.sdir+setup.short_name+"_"+setup.rastergrid_files[i]; 
+    std::string filename = ad.output_dir+ad.sdir+setup.short_name+"_"+setup.rastergrid_files[i];
     initRGData(filename, GRID, nodata, rgs[i], rgdatas[i], rgpeak);
   }
 
@@ -208,12 +208,12 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
     // Need to realod WD for this time step.
     WDloaded  = false;
 
-    // -------  OUTPUTS --------    
+    // -------  OUTPUTS --------
 
     // Retrieve the string of the time.
     std::string strtime;
     CA::toString(strtime,t);
-    
+
     // ----  RASTER GRID ----
 
     for(size_t i = 0; i<rgdatas.size(); ++i)
@@ -227,18 +227,18 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 	  // The water depth buffer is practically always needed (for WD/WL and VEL).
 	  // Reset the buffer
 	  WD.fill(fulldomain,agtmp1.nodata);
-	  
+
 	  // Load the water depth data.
 	  if(!WD.loadData(setup.short_name+"_WD",strtime) )
 	  {
 	    std::cerr<<"Missing water depth data: "<<strtime<<std::endl;
 	    continue;
 	  }
-	  
+
 	  // Set the water depth to zero if it less than tollerance.
 	  CA::State boundary = (setup.rast_boundary) ? 1 : 0;
 	  CA::Execute::function(fulldomain, zeroedWD, GRID, WD, MASK, setup.rast_wd_tol, boundary);
-	
+
 	  // Add the ID to remove.
 	  removeIDsCB.push_back(std::make_pair(setup.short_name+"_WD",strtime));
 
@@ -248,10 +248,10 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 	switch(rgs[i].pv)
 	{
 	case PV::VEL:
-	  {	  
+	  {
 	    std::string filenameV;
 	    std::string filenameA;
-	    
+
 	    // Create the name of the files if it is going to output a
 	    // velocity field or simply rasters.
 	    if(setup.rast_vel_as_vect == true)
@@ -264,18 +264,18 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 	      filenameV = removeExtension(rgdatas[i].filename) + "_V_" + strtime;
 	      filenameA = removeExtension(rgdatas[i].filename) + "_A_" + strtime;
 	    }
-	    
+
 	    // Reset the buffer
 	    TMP1.fill(fulldomain,agtmp1.nodata);
 	    TMP2.fill(fulldomain,agtmp1.nodata);
-	    
+
 	    // Load the velocity data on TMP1.
 	    if(! TMP1.loadData(setup.short_name+"_V",strtime) )
 	    {
 	      std::cerr<<"Missing velocity data to create file: "<<filenameV<<std::endl;
 	      continue;
 	    }
-	    
+
 	    // Load the angle data on TMP2.
 	    if(! TMP2.loadData(setup.short_name+"_A",strtime) )
 	    {
@@ -285,25 +285,25 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 
 	    // Set the V and A to zero if water depth is less than tollerance.
 	    CA::Execute::function(fulldomain, zeroedVA, GRID, TMP1, TMP2, WD, MASK, setup.rast_wd_tol);
-	    
+
 	    // Retrieve the velocity and angle data
-	    TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);	  
-	    TMP2.retrieveData(realbox, &agtmp2.data[0], agtmp2.ncols, agtmp2.nrows);	  
-	    
+	    TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);
+	    TMP2.retrieveData(realbox, &agtmp2.data[0], agtmp2.ncols, agtmp2.nrows);
+
 	    // check if we need to output a velocity field
 	    if(setup.rast_vel_as_vect)
 	    {
 	      if(setup.output_console)
 		std::cout<<"Write Raster Grid: "<<filenameV<<std::endl;
-	      
-	      // Create the CSV file
-	      //std::ofstream file( filenameV.c_str() ); 
-	      FILE* fout = fopen(filenameV.c_str(), "w");	      
 
-	      // Set  manipulators 
+	      // Create the CSV file
+	      //std::ofstream file( filenameV.c_str() );
+	      FILE* fout = fopen(filenameV.c_str(), "w");
+
+	      // Set  manipulators
 	      //file.setf(std::ios::fixed, std::ios::floatfield);
-	      //file.precision(6); 
-	      
+	      //file.precision(6);
+
 	      // Write the header
 	      //file<<"X, Y, Speed, Angle_RAD, Angle_DEG, Angle_QGIS"<<std::endl;
 	      fprintf(fout,"X, Y, Speed, Angle_RAD, Angle_DEG, Angle_QGIS\n");
@@ -316,16 +316,16 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 		  // Create the point and find the coordinates.
 		  CA::Point p(i_reg,j_reg);
 		  p.setCoo(GRID);
-		  
+
 		  // Retrieve the speed and angle values (in radians),
 		  // the compute the angle value in degrees.
 		  CA::Real V  = agtmp1.data[j_mem * agtmp1.ncols + i_mem];
 		  CA::Real AR = agtmp2.data[j_mem * agtmp2.ncols + i_mem];
 		  CA::Real AD = AR*180/PI;
-		  
+
 		  // Compute the angle needed by QGis.
-		  CA::Real AQ = -AR*180/PI + 90; 		
-		  
+		  CA::Real AQ = -AR*180/PI + 90;
+
 		  // Write the results if the veclocity is more than zero.
 		  if(V>0)
 		  {
@@ -333,29 +333,29 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 		    fprintf(fout,"%.12f,%.12f,%.6f,%.6f,%.6f,%.6f,\n", p.coo().x(),p.coo().y(),V,AR,AD,AQ);
 		  }
 		}
-	      }        
-	      
+	      }
+
 	      // Close the file.
-	      //file.close();	      
+	      //file.close();
 	      fclose(fout);
 	    }
 	    // NOPE, simply output the rasters.
 	    else
 	    {
-	      if(setup.output_console)
-		std::cout<<"Write Raster Grid: "<<filenameV<<" "<<filenameA<<std::endl;
-	      
 	      // Write the  data.
 		  agtmp1.writeAsciiGrid(filenameV,setup.rast_places);
 		  agtmp2.writeAsciiGrid(filenameA,setup.rast_places);
+
+          if(setup.output_console)
+            std::cout<<"Write Raster Grid: "<<filenameV<<" "<<filenameA<<std::endl;
 	    }
-	    
+
 	    // Add the ID to remove.
 	    removeIDsCB.push_back(std::make_pair(setup.short_name+"_V",strtime));
 	    removeIDsCB.push_back(std::make_pair(setup.short_name+"_A",strtime));
 	  }
 	  break;
-	  
+
 	case PV::WL:
 	  {
 	    // Create the name of the file.
@@ -366,15 +366,15 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 
 	    // Make the water depth data and elevation into the water level.
 	    CA::Execute::function(fulldomain, makeWL, GRID, TMP1, WD, ELV, MASK);
-	    
+
 	    // Retrieve the data
-	    TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);	  
-	    	    
-	    if(setup.output_console)
-	      std::cout<<"Write Raster Grid: "<<filename<<std::endl;
-	    
+	    TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);
+
 	    // Write the data.
 		agtmp1.writeAsciiGrid(filename,setup.rast_places);
+
+        if(setup.output_console)
+            std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	  }
 	  break;
 	case PV::WD:
@@ -383,15 +383,15 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 	    std::string filename = removeExtension(rgdatas[i].filename) + "_" + strtime;
 
 	    // Water depth already loaded.
-	    
+
 	    // Retrieve the data
-	    WD.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);	  
-	    	    
-	    if(setup.output_console)
-	      std::cout<<"Write Raster Grid: "<<filename<<std::endl;
-	    
+	    WD.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);
+
 	    // Write the data.
 		agtmp1.writeAsciiGrid(filename,setup.rast_places);
+
+        if(setup.output_console)
+            std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	  }
 	  break;
 	default:
@@ -414,14 +414,14 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
     // Set the nearest important time as the enxt time and set the
     // possible nearest important time as the end of the simulation.
     t         = t_nearest;
-    t_nearest = setup.time_end;   
+    t_nearest = setup.time_end;
   }
 
   // ----  PEAK RASTER GRID ----
 
   // Need to realod WD only once for PEAK.
   WDloaded  = false;
-  
+
   for(size_t i = 0; i<rgdatas.size(); ++i)
   {
     // Check if the peak values need to be saved.
@@ -433,7 +433,7 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 	// The water depth buffer is practically always needed (for WD/WL and VEL).
 	// Reset the buffer
 	WD.fill(fulldomain,agtmp1.nodata);
-	
+
 	// Load the water depth data.
 	if(! WD.loadData(setup.short_name+"_WD","PEAK") )
 	{
@@ -451,17 +451,17 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 	// Only once.
 	WDloaded = true;
       }
-	
+
       switch(rgs[i].pv)
       {
       case PV::VEL:
 	{
 	  // Create the name of the file.
 	  std::string filenameV = removeExtension(rgdatas[i].filename) + "_V_PEAK";
-	  
+
 	  // Reset the buffer
 	  TMP1.fill(fulldomain,agtmp1.nodata);
-	  
+
 	  // Load the data on TMP1.
 	  if(! TMP1.loadData(setup.short_name+"_V","PEAK") )
 	  {
@@ -471,15 +471,15 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 
 	  // Set the V and A to zero if water depth is less than tollerance.
 	  CA::Execute::function(fulldomain, zeroedVA, GRID, TMP1, TMP2, WD, MASK, setup.rast_wd_tol);
-	  	  
+
 	  // Retrieve the data
-	  TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);	  
-	  
-	  if(setup.output_console)
-	    std::cout<<"Write Raster Grid: "<<filenameV<<std::endl;
-	  
+	  TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);
+
 	  // Write the data.
 	  agtmp1.writeAsciiGrid(filenameV,setup.rast_places);
+
+      if(setup.output_console)
+          std::cout<<"Write Raster Grid: "<<filenameV<<std::endl;
 
 	  // Add the ID to remove.
 	  removeIDsCB.push_back(std::make_pair(setup.short_name+"_V","PEAK"));
@@ -490,45 +490,45 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 	{
 	  // Create the name of the file.
 	  std::string filename = removeExtension(rgdatas[i].filename) + "_PEAK";
-	  
+
 	  // Reset the buffer
 	  TMP1.fill(fulldomain,agtmp1.nodata);
-	  	  
+
 
 	  // Make the water depth data and elevation into the water level.
 	  CA::Execute::function(fulldomain, makeWL, GRID, TMP1, WD, ELV, MASK);
-	  
+
 	  // Retrieve the data
-	  TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);	  
-	  
-	  if(setup.output_console)
-	    std::cout<<"Write Raster Grid: "<<filename<<std::endl;
-	  
+	  TMP1.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);
+
 	  // Write the data.
 	  agtmp1.writeAsciiGrid(filename,setup.rast_places);
+
+      if(setup.output_console)
+          std::cout<<"Write Raster Grid: "<<filename<<std::endl;
 	}
 	break;
-	
+
       case PV::WD:
 	{
 	  // Create the name of the file.
 	  std::string filename = removeExtension(rgdatas[i].filename) + "_PEAK";
 
 	  // Water depth already loaded.
-	  
+
 	  // Retrieve the data
-	  WD.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);	  
-	  
-	  if(setup.output_console)
-	    std::cout<<"Write Raster Grid: "<<filename<<std::endl;
-	  
+	  WD.retrieveData(realbox, &agtmp1.data[0], agtmp1.ncols, agtmp1.nrows);
+
 	  // Write the data.
 	  agtmp1.writeAsciiGrid(filename,setup.rast_places);
-	}
+
+      if(setup.output_console)
+          std::cout<<"Write Raster Grid: "<<filename<<std::endl;
+    }
 	break;
       default:
 	break;
-      }      
+      }
     }
 
   }
@@ -537,21 +537,21 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
   {
     for(size_t i=0; i<removeIDsCB.size(); i++)
     {
-      std::pair <std::string,std::string>& ID = removeIDsCB[i];; 
+      std::pair <std::string,std::string>& ID = removeIDsCB[i];;
       CA::CellBuffReal::removeData(ad.data_dir,ID.first,ID.second);
-    }    
+    }
     for(size_t i=0; i<removeIDsEB.size(); i++)
     {
-      std::pair <std::string,std::string>& ID = removeIDsEB[i];; 
+      std::pair <std::string,std::string>& ID = removeIDsEB[i];;
       CA::EdgeBuffReal::removeData(ad.data_dir,ID.first,ID.second);
-    }    
+    }
   }
 
   if(setup.remove_prec_data)
   {
     // Remove Elevation data.
     CA::CellBuffReal::removeData(ad.data_dir,setup.preproc_name+"_ELV","0");
-    
+
     // Remove Grid data.
     CA::Grid::remove(ad.data_dir,setup.preproc_name+"_Grid","0");
   }
@@ -562,11 +562,11 @@ int postProc(const ArgsData& ad, const Setup& setup, CA::ESRI_ASCIIGrid<CA::Real
 
   if(setup.output_computation)
   {
-    std::cout<<"-----------------" << std::endl; 
+    std::cout<<"-----------------" << std::endl;
     std::cout<<"Total run time taken (s) = " << total_timer.millisecond()/1000.0 << std::endl;
-    std::cout<<"-----------------" << std::endl; 
+    std::cout<<"-----------------" << std::endl;
   }
 
-  
+
   return 0;
 }

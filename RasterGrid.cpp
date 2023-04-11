@@ -303,16 +303,16 @@ bool RGManager::output(CA::Real t, CA::CellBuffReal& WD,
   {
     // Check if it is time to plot or the output is forced!
     if(t >= _datas[i].time_next || (final && _rgs[i].final))
-    {	
-      if(!outputed && output)
-      {
-	std::cout<<"Write Raster Grid (MIN "<<t/60<<"): ";
-	outputed = true;
-      }
-
+    {
       // Retrieve the string of the time.
       std::string strtime;
       CA::toString(strtime,std::floor(t+0.5));
+
+      if(!outputed && output)
+      {
+	std::cout<<"Write Raster Grid (seconds "<<strtime<<"): ";
+	outputed = true;
+      }
 
       // Save the buffer using direct I/O where the main ID is the
       // buffer name and the subID is the timestep.
