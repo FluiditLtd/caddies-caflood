@@ -413,9 +413,10 @@ int main(int argc, char* argv[])
   for(size_t i = 0; i< setup.rainevent_files.size(); ++i)
   {
     std::string file = ad.working_dir+ad.sdir+setup.rainevent_files[i]; 
+    std::string datadir = ad.working_dir + ad.sdir;
 
     RainEvent re;
-    if(initRainEventFromCSV(file, re)!=0)
+    if(initRainEventFromCSV(file, re, datadir)!=0)
     {
       std::cerr<<"Error reading Rain Event CSV file: "<<file<<std::endl;
       return EXIT_FAILURE;    
@@ -424,9 +425,16 @@ int main(int argc, char* argv[])
     if(ad.info)
     {
       std::cout<<"Rain Event         : "<<re.name<<std::endl;
-      std::cout<<"Rain Intensity     : ";
-      for(size_t i = 0; i< re.rains.size(); ++i)
-	std::cout<<re.rains[i]<<" ";
+      if (!re.grids.empty()) {
+          std::cout<<"Rain Grids         : ";
+          for(size_t i = 0; i< re.grids.size(); ++i)
+              std::cout << re.grids[i] <<" ";
+      }
+      else {
+          std::cout << "Rain Intensity     : ";
+          for (size_t i = 0; i < re.rains.size(); ++i)
+              std::cout << re.rains[i] << " ";
+      }
       std::cout<<std::endl;
       std::cout<<"Time Stop          : ";
       for(size_t i = 0; i< re.times.size(); ++i)

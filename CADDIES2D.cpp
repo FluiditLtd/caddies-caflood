@@ -576,7 +576,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     // Add the area with rain in the computational domain.
     rain_manager.addDomain(compdomain);
 
-    // Analyse the area where it will rain to use for volume cheking. WD
+    // Analyse the area where it will rain to use for volume checking. WD
     // is used as temporary buffer.
     if (setup.check_vols)
         rain_manager.analyseArea(WD, MASK, fulldomain);
@@ -590,7 +590,7 @@ int CADDIES2D(const ArgsData &ad, const Setup &setup, const CA::ESRI_ASCIIGrid<C
     inflow_manager.addDomain(compdomain);
 
     // Analyse the area where it will inflow to use for volume
-    // cheking. WD is used as temporary buffer.
+    // checking. WD is used as temporary buffer.
     if (setup.check_vols)
         inflow_manager.analyseArea(WD, MASK, fulldomain);
 

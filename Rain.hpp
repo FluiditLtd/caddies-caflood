@@ -52,7 +52,8 @@ struct RainEvent
 {
   std::string    name;		//!< Name of the event. 
 
-  std::vector<CA::Real> rains;	//!< The list of rain intensities in mm/hr 
+  std::vector<std::string> grids;	//!< The list of rain grid files mm/hr
+  std::vector<CA::Real> rains;	//!< The list of rain intensities in mm/hr
   std::vector<CA::Real> times;	//!< The times when the rain intensities stop in seconds.
   std::vector<CA::Real> area;	//!< The area where the rain will fall (if empty all domain).  
   std::vector<CA::Real> zone;	//!< The zone (x,y,w,h) where the rain will heppen (if empty all domain).
@@ -66,7 +67,7 @@ struct RainEvent
 //! \param[in]  filename This is the file where the data is read.
 //! \param[out] setup    The structure containing the read data.
 //! \return A non zero value if there was an error.
-int initRainEventFromCSV(const std::string& filename, RainEvent& re);
+int initRainEventFromCSV(const std::string& filename, RainEvent& re, const std::string& data_dir);
 
 
 //! Class that manage all Rain events
@@ -94,14 +95,20 @@ private:
     double   expected_rain;	//!< The expected rain added during a update period.
 
     double   one_off_rain;	//!< The rain to add/subtract.
+    CA::CellBuffReal *grid;  //!< The grid containing the raster data.
     
     Data():
       index(0), box_area(CA::Box::Empty()), grid_area(0.0), volume(0.0), rain(0.0),
-      total_rain(0.0), expected_rain(0.0), one_off_rain(0.0)
+      total_rain(0.0), expected_rain(0.0), one_off_rain(0.0), grid(nullptr)
     {}
     
     ~Data()
-  {}
+    {
+        if (grid != nullptr) {
+            delete grid;
+            grid = nullptr;
+        }
+    }
   };
 
 public:

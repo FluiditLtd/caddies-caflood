@@ -39,11 +39,13 @@ THE SOFTWARE.
 // Include the CA 2D functions //
 // -------------------------//
 #include CA_2D_INCLUDE(computeArea)
+#include CA_2D_INCLUDE(computeVolume)
 #include CA_2D_INCLUDE(addRain)
+#include CA_2D_INCLUDE(addRainGrid)
 
 
 // Initialise the RainEvents structure usign a CSV file. 
-int initRainEventFromCSV(const std::string& filename, RainEvent& re)
+int initRainEventFromCSV(const std::string& filename, RainEvent& re, const std::string& data_dir)
 {
   std::ifstream ifile(filename.c_str());
   
@@ -96,6 +98,15 @@ int initRainEventFromCSV(const std::string& filename, RainEvent& re)
 	READ_TOKEN(found_tok,value,tokens[i],tokens[0]);
 
 	re.times.push_back(value);
+      }
+    }
+
+    if(CA::compareCaseInsensitive("Grid",tokens[0],true))
+    {
+      found_tok=true;
+      for (size_t i=1; i<tokens.size(); ++i)
+      {
+          re.grids.push_back(data_dir + tokens[i]);
       }
     }
 
@@ -158,7 +169,10 @@ void RainManager::addDomain(CA::BoxList& compdomain)
 {
   for(size_t i = 0; i<_datas.size(); ++i)
   {
-    compdomain.add(_datas[i].box_area);
+    if (_datas[i].grid == nullptr)
+        compdomain.add(_datas[i].box_area);
+    else
+        compdomain.add(_grid.box());
   }
 }
 
@@ -167,6 +181,9 @@ void RainManager::analyseArea(CA::CellBuffReal& TMP, CA::CellBuffState& MASK, CA
 {
   for(size_t i = 0; i<_datas.size(); ++i)
   {
+    if (_datas[i].grid != nullptr)
+        continue;
+
     TMP.fill(domain, 0.0);
     CA::Execute::function(_datas[i].box_area, computeArea, _grid, TMP, MASK);    
     TMP.sequentialOp(_datas[i].box_area, _datas[i].grid_area, CA::Seq::Add);
@@ -194,28 +211,56 @@ void RainManager::prepare(CA::Real t, CA::Real period_time_dt, CA::Real next_dt)
     // Check if the simulation time now is equal or higher than the
     // time when this rain intensity ends. If it is the case,
     // increase the index to the next rain intensity.
-    if(t >= _res[i].times[index])
-	index++;
+    bool reload = false;
+    if(t >= _res[i].times[index]) {
+        index++;
+        reload = true;
+    }
 
     // If the index is larger than the available rain/time, do
     // nothing.
-    if(index >= _res[i].rains.size() )
+    if(index >= _res[i].rains.size() && index >= _res[i].grids.size())
       continue;
 
-    // Get the rain (transformed in metres from mm) for each dt of the next period.
-    _datas[i].rain = (_res[i].rains[index] * 0.001) * (next_dt/3600.0);
+    // Load the next raster in, if demanded
+    if (reload || _datas[i].grid == nullptr) {
+        if (index < _res[i].grids.size() && !_res[i].grids[index].empty()) {
+            if (_datas[i].grid == nullptr)
+                _datas[i].grid = new CA::CellBuffReal(_grid);
 
-    // Get the rain (transformed in metres from mm) for the next period.
-    CA::Real period_rain = (_res[i].rains[index] * 0.001) * (period_time_dt/3600.0);
+            std::cout << "Loading rain raster " << _res[i].grids[index] << " for time " << t << std::endl;
 
-    // The expected amount of rain for the next period.
-    _datas[i].expected_rain = period_rain;
-    
+            CA::ESRI_ASCIIGrid<CA::Real> rainGrid;
+            rainGrid.readAsciiGrid(_res[i].grids[index]);
+
+            CA::Box      realbox(_grid.box().x()+1,_grid.box().y()+1,_grid.box().w()-2,_grid.box().h()-2);
+            _datas[i].grid->insertData(realbox, &rainGrid.data[0], rainGrid.ncols, rainGrid.nrows);
+        }
+    }
+
+    // In case there are actual intensities present, use them.
+    if (index < _res[i].rains.size()) {
+        // Get the rain (transformed in metres from mm) for each dt of the next period.
+        _datas[i].rain = (CA::Real)((_res[i].rains[index] * 0.001) * (next_dt / 3600.0));
+
+        // Get the rain (transformed in metres from mm) for the next period.
+        CA::Real period_rain = (CA::Real)((_res[i].rains[index] * 0.001) * (period_time_dt / 3600.0));
+
+        // The expected amount of rain for the next period.
+        _datas[i].expected_rain = period_rain;
+
+        // Add the volume.
+        _datas[i].volume = period_rain * _datas[i].grid_area;
+    }
+    // In case of grid source, let's just leave everything zero
+    else {
+        _datas[i].rain = 0.0;
+        _datas[i].expected_rain = 0.0;
+        _datas[i].volume = 0.0;
+    }
+
     // Reset the total amount of rain for the next period.
     _datas[i].total_rain = 0.0;
-    
-    // Add the volume.
-    _datas[i].volume = period_rain * _datas[i].grid_area;
     
     // Update index.
     _datas[i].index = index;
@@ -240,8 +285,21 @@ void RainManager::add(CA::CellBuffReal& WD, CA::CellBuffState& MASK, CA::Real t,
   // Loop through the rain event(s).
   for(size_t i = 0; i<_res.size(); ++i)
   {
+    if (_datas[i].grid != nullptr) {
+        CA::Real volume = 0.0;
+        _datas[i].grid->sequentialOp(_grid.box(), volume, CA::Seq::Add);
+        volume = (float)(volume * 0.001 * (next_dt / 3600.0) * _grid.area());
+
+        CA::Real rainmultiplier = (CA::Real)(0.001 * (next_dt / 3600.0));
+        CA::Execute::function(_grid.box(), addRainGrid, _grid, WD, MASK, *_datas[i].grid, rainmultiplier);
+
+        _datas[i].volume += volume;
+        _datas[i].expected_rain += volume;
+        _datas[i].total_rain += volume;
+    }
+
     // Do not add the rain if it is zero.
-    if(_datas[i].rain>=SMALL_RAIN)
+    else if(_datas[i].rain>=SMALL_RAIN)
     {
       // The amount of rain to add.
       CA::Real rain = static_cast<double>(_datas[i].rain)+_datas[i].one_off_rain;
@@ -281,8 +339,15 @@ CA::Real RainManager::potentialVA(CA::Real t, CA::Real period_time_dt)
     if(index >= _res[i].rains.size() )
       continue;
 
-    // Get the rain (transformed in metres from mm) for the next period.
-    CA::Real rain = (_res[i].rains[index] * 0.001) * (period_time_dt/3600.0);
+    CA::Real rain;
+    if (_datas[i].grid == nullptr) {
+        // Get the rain (transformed in metres from mm) for the next period.
+        rain = (_res[i].rains[index] * 0.001) * (period_time_dt / 3600.0);
+    }
+    else {
+        _datas[i].grid->sequentialOp(_grid.box(), rain, CA::Seq::Max);
+        rain = (float)(rain * 0.001 * (period_time_dt / 3600.0));
+    }
     
     // Compute the potential velocity.
     potential_va = std::max(potential_va, std::sqrt(static_cast<CA::Real>(9.81)*( rain )) );
@@ -304,8 +369,10 @@ CA::Real RainManager::endTime()
     {
       // Check if it is still raining at this time. If yest then
       // updated end_t.
-      if(_res[i].rains[j]>0.0)
-	t_end = std::max(t_end,_res[i].times[j]);
+      if (j < _res[i].grids.size())
+         t_end = std::max(t_end, _res[i].times[j]);
+      else if(j < _res[i].rains.size() && _res[i].rains[j]>0.0)
+	     t_end = std::max(t_end,_res[i].times[j]);
     }
   }
 

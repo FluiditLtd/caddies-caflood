@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 // Compute the area in each cell
 
-CA_FUNCTION computeArea(CA_GRID grid, CA_CELLBUFF_REAL_IO TMP,CA_CELLBUFF_STATE_I MASK)
+CA_FUNCTION computeVolume(CA_GRID grid, CA_CELLBUFF_REAL_IO TMP, CA_CELLBUFF_STATE_I MASK)
 {
   // Initialise the grid
   CA_GRID_INIT(grid);
@@ -38,12 +38,17 @@ CA_FUNCTION computeArea(CA_GRID grid, CA_CELLBUFF_REAL_IO TMP,CA_CELLBUFF_STATE_
 
   // If the main cell has no data,
   // then do nothing.
-  if(bit0 == 0)
+  if(bit0 == 0) {
+    caWriteCellBuffReal(grid, TMP, 0.0);
     return;
+  }
 
   // Retrieve the area of the main cell.
   CA_REAL  area = caArea(grid,0);
 
+  // Retrieve the area of the main cell.
+  CA_REAL  value = caReadCellBuffReal(grid, TMP, 0);
+
   // Write the area in the buffer
-  caWriteCellBuffReal(grid,TMP,area);
+  caWriteCellBuffReal(grid, TMP, area * value);
 }

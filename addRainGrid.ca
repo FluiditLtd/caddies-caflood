@@ -23,27 +23,28 @@ THE SOFTWARE.
 
 */
 
-// Compute the area in each cell
-
-CA_FUNCTION computeArea(CA_GRID grid, CA_CELLBUFF_REAL_IO TMP,CA_CELLBUFF_STATE_I MASK)
+// Add the rain into a buffer.  ATTENTION The rain is not
+// added into the boundary cell (bit 31 mask).
+CA_FUNCTION addRainGrid(CA_GRID grid, CA_CELLBUFF_REAL_IO BUFF, CA_CELLBUFF_STATE_I MASK, CA_CELLBUFF_REAL_I RAIN, CA_GLOB_REAL_I multiplier)
 {
   // Initialise the grid
   CA_GRID_INIT(grid);
 
   // Read Mask.
-  CA_STATE mask  = caReadCellBuffState(grid,MASK,0);
+  CA_STATE mask  = caReadCellBuffState(grid, MASK, 0);
 
-  // Read bit 0  (false the main cell has nodata)
-  CA_STATE bit0  = caReadBitsState(mask,0,1);
+  // Read bit 0  (false the main cell is nodata)
+  CA_STATE bit0  = caReadBitsState(mask, 0, 1);
 
-  // If the main cell has no data,
-  // then do nothing.
+  // If the main cell has no data. Do
+  // nothing.
   if(bit0 == 0)
     return;
 
-  // Retrieve the area of the main cell.
-  CA_REAL  area = caArea(grid,0);
+  // Retrieve the value of the buffer
+  CA_REAL  value = caReadCellBuffReal(grid, BUFF, 0);
+  CA_REAL  rain = caReadCellBuffReal(grid, RAIN, 0);
 
-  // Write the area in the buffer
-  caWriteCellBuffReal(grid,TMP,area);
+  // Add the rain value+rain*dt/3600
+  caWriteCellBuffReal(grid, BUFF, value + rain * multiplier);
 }
